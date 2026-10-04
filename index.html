@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f2ec" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="description"
+      content="Un laboratorio interattivo per esplorare il modello Roofline e i colli di bottiglia delle architetture AI. Statico, in italiano, senza login."
+    />
+    <title>AI Silicon / Roofline Lab — Segui i dati</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#laboratorio">Salta al laboratorio</a>
+    <div class="site-frame">
+      <header class="topbar">
+        <a class="brand" href="#inizio" aria-label="AI Silicon Lab, torna all’inizio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 38 38" fill="none">
+              <path d="M7 10.5h24M7 19h24M7 27.5h24" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="13" cy="10.5" r="3.2" fill="#d7ef87" stroke="currentColor" stroke-width="1.5" />
+              <circle cx="25" cy="19" r="3.2" fill="#ff806d" stroke="currentColor" stroke-width="1.5" />
+              <circle cx="17" cy="27.5" r="3.2" fill="#8f81ff" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </span>
+          <span class="brand-wordmark">AI SILICON<span> / LAB</span></span>
+          <span class="brand-index">01</span>
+        </a>
+        <nav class="main-nav" aria-label="Navigazione principale">
+          <a href="#profili">Architetture <span>08</span></a>
+          <a href="#laboratorio">Simulatore <span>↘</span></a>
+          <a href="#metodo">Metodo <span>↗</span></a>
+        </nav>
+        <a class="topbar-status" href="#metodo">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>STATICO · NO LOGIN</span>
+        </a>
+      </header>
+
+      <main>
+        <section class="hero" id="inizio" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-line"></span> ARCHITETTURE COMPUTAZIONALI PER L’AI</p>
+            <h1 id="hero-title">La velocità<br />non basta.<br /><em>Segui i dati.</em></h1>
+            <p class="hero-intro">
+              Otto architetture. Un workload LLM. Un modello Roofline per vedere
+              quando il calcolo corre — e quando resta in attesa della memoria.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-dark" href="#laboratorio">
+                Entra nel laboratorio <span aria-hidden="true">↘</span>
+              </a>
+              <span class="hero-note">Una simulazione didattica.<br />Non un benchmark hardware.</span>
+            </div>
+            <div class="hero-meta" aria-label="Caratteristiche della demo">
+              <span><i aria-hidden="true">01</i> SOLO FRONTEND</span>
+              <span><i aria-hidden="true">02</i> DATI CON FONTE</span>
+              <span><i aria-hidden="true">03</i> TARGET 60 FPS</span>
+            </div>
+          </div>
+
+          <div class="hero-visual" aria-hidden="true">
+            <div class="hero-visual-top">
+              <span>DATA / FLOW</span>
+              <span>MODELLO VISIVO · 001</span>
+            </div>
+            <svg class="hero-circuit" viewBox="0 0 640 500" fill="none" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="circuit-line" x1="87" y1="88" x2="540" y2="392" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#f7a075" />
+                  <stop offset=".52" stop-color="#d7ef87" />
+                  <stop offset="1" stop-color="#9b8aff" />
+                </linearGradient>
+                <radialGradient id="chip-glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 190 -220 0 329 245)" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#263444" />
+                  <stop offset="1" stop-color="#111923" />
+                </radialGradient>
+                <filter id="soft-glow" x="-100%" y="-100%" width="300%" height="300%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <circle cx="324" cy="250" r="205" stroke="#34404b" stroke-dasharray="2 8" />
+              <circle cx="324" cy="250" r="167" stroke="#35424e" stroke-dasharray="1 10" />
+              <path d="M82 116h95c28 0 51 23 51 51v24c0 29 23 52 52 52h91c27 0 49-22 49-49v-38c0-26 21-47 47-47h91" stroke="#3b4b55" stroke-width="2" />
+              <path d="M67 361h118c29 0 52-23 52-52v-16c0-27 22-49 49-49h86c29 0 52 23 52 52v28c0 27 22 49 49 49h94" stroke="#3b4b55" stroke-width="2" />
+              <path d="M92 240h62c27 0 49 22 49 49v28c0 23 19 42 42 42h82c23 0 42-19 42-42v-7c0-22 18-40 40-40h142" stroke="url(#circuit-line)" stroke-width="2.5" stroke-linecap="round" filter="url(#soft-glow)" />
+              <circle cx="293" cy="320" r="5" fill="#d7ef87" filter="url(#soft-glow)" />
+              <circle cx="461" cy="270" r="4" fill="#9b8aff" filter="url(#soft-glow)" />
+              <circle cx="229" cy="167" r="4" fill="#f7a075" />
+              <rect x="217" y="145" width="214" height="214" rx="36" fill="url(#chip-glow)" stroke="#54626c" stroke-width="1.5" />
+              <rect x="239" y="167" width="170" height="170" rx="25" stroke="#66747c" stroke-width="1" />
+              <path d="M272 220h104M272 248h104M272 276h72" stroke="#b4c0c0" stroke-width="2" stroke-linecap="round" />
+              <path d="M272 305h46" stroke="#d7ef87" stroke-width="3" stroke-linecap="round" />
+              <rect x="290" y="182" width="31" height="19" rx="9.5" fill="#d7ef87" />
+              <text x="305.5" y="195" text-anchor="middle" fill="#202a2c" font-size="9" font-weight="700">AI</text>
+              <circle cx="82" cy="116" r="6" fill="#ff9b70" />
+              <circle cx="571" cy="361" r="6" fill="#9b8aff" />
+              <circle cx="92" cy="240" r="6" fill="#d7ef87" />
+              <text x="64" y="92" fill="#aeb8b9" font-size="10" letter-spacing="2">MEMORIA</text>
+              <text x="494" y="92" fill="#aeb8b9" font-size="10" letter-spacing="2">COMPUTE</text>
+              <text x="270" y="395" fill="#8d9a9f" font-size="10" letter-spacing="2">IL COLLO DI BOTTIGLIA È UNA SCELTA</text>
+            </svg>
+            <div class="hero-visual-foot">
+              <span><b>BW</b> memory bandwidth</span>
+              <span><b>I</b> FLOP / byte</span>
+              <span><b>P</b> compute ceiling</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="signal-strip" aria-label="Le famiglie confrontate">
+          <span class="signal-label">DAL CHIP AL POD</span>
+          <span>APPLE SILICON</span><i aria-hidden="true">✳</i>
+          <span>X86</span><i aria-hidden="true">✳</i>
+          <span>GPU</span><i aria-hidden="true">✳</i>
+          <span>TPU</span><i aria-hidden="true">✳</i>
+          <span>LPU</span>
+          <span class="signal-end">UNA SOLA DOMANDA: DOVE ASPETTA?</span>
+        </div>
+
+        <section class="profiles-section section-pad" id="profili" aria-labelledby="profiles-title">
+          <div class="section-topline">
+            <p class="eyebrow"><span class="eyebrow-line"></span> 01 / IL CAMPIONE</p>
+            <span class="section-index">REFERENCE PROFILES · 2026</span>
+          </div>
+          <div class="section-title-row">
+            <div>
+              <h2 id="profiles-title">Stessa domanda.<br /><em>Silicio diverso.</em></h2>
+            </div>
+            <p class="section-aside">
+              Seleziona un profilo per seguirne il percorso dei dati. Le bande sono
+              massimi dichiarati o limiti teorici derivati: non sono misure sostenute.
+            </p>
+          </div>
+          <div class="profile-grid" id="profile-grid" aria-label="Profili di architettura">
+            <noscript><p>Attiva JavaScript per esplorare il catalogo interattivo.</p></noscript>
+          </div>
+          <div class="profile-footnote">
+            <span class="footnote-mark" aria-hidden="true">↳</span>
+            <p>
+              <strong>Un profilo non è un’intera famiglia.</strong> SKU, precisione, memoria
+              installata e sistema multi-chip cambiano il risultato. Apri le fonti nel banco prova.
+            </p>
+            <a href="#metodo">Come leggere i dati <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
+
+        <section class="laboratory-section" id="laboratorio" aria-labelledby="lab-title">
+          <div class="lab-topline">
+            <p class="eyebrow"><span class="eyebrow-line"></span> 02 / IL BANCO PROVA</p>
+            <span class="lab-live"><span class="status-dot" aria-hidden="true"></span> CALCOLO LOCALE · ZERO API</span>
+          </div>
+          <div class="lab-heading">
+            <div>
+              <h2 id="lab-title">Cambia il carico.<br /><em>Osserva il limite.</em></h2>
+            </div>
+            <p>
+              Una sola intensità aritmetica attraversa i profili. Sposta il punto:
+              il collo di bottiglia si sposta con lui.
+            </p>
+          </div>
+
+          <div class="lab-layout">
+            <form class="control-panel" id="scenario-form" aria-label="Parametri dello scenario LLM">
+              <div class="control-panel-head">
+                <span class="panel-kicker">SCENARIO / INPUT</span>
+                <span class="panel-number">01—05</span>
+              </div>
+
+              <fieldset class="phase-control">
+                <legend>Fase dell’inferenza</legend>
+                <div class="phase-options">
+                  <label class="phase-option">
+                    <input type="radio" name="phase" value="decode" checked />
+                    <span><b>01</b> Decode<small>un token alla volta</small></span>
+                  </label>
+                  <label class="phase-option">
+                    <input type="radio" name="phase" value="prefill" />
+                    <span><b>02</b> Prefill<small>elabora il prompt</small></span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="control-block">
+                <div class="control-label-row">
+                  <label for="model-size">Parametri del modello</label>
+                  <output id="model-size-value" for="model-size">7 B</output>
+                </div>
+                <input id="model-size" name="model-size" type="range" min="1" max="120" step="1" value="7" aria-describedby="model-size-help" />
+                <div class="range-ends"><span>1 B</span><span>120 B</span></div>
+                <p class="control-help" id="model-size-help">Dimensione nominale, in miliardi di parametri.</p>
+              </div>
+
+              <div class="control-block control-grid-two">
+                <div>
+                  <label for="weight-bits">Memoria per peso</label>
+                  <div class="select-wrap">
+                    <select id="weight-bits" name="weight-bits">
+                      <option value="4" selected>4 bit · Q4</option>
+                      <option value="8">8 bit · Q8</option>
+                      <option value="16">16 bit · FP16/BF16</option>
+                    </select>
+                    <span aria-hidden="true">⌄</span>
+                  </div>
+                </div>
+                <div class="mini-metric">
+                  <span>Working set*</span>
+                  <output id="working-set-value">4,2 GB</output>
+                </div>
+              </div>
+
+              <div class="control-block">
+                <div class="control-label-row">
+                  <label for="batch-size">Batch · sequenze concorrenti</label>
+                  <output id="batch-size-value" for="batch-size">1</output>
+                </div>
+                <input id="batch-size" name="batch-size" type="range" min="1" max="32" step="1" value="1" />
+                <div class="range-ends"><span>1</span><span>32</span></div>
+              </div>
+
+              <div class="control-block" id="context-control">
+                <div class="control-label-row">
+                  <label for="context-size">Token nel prompt</label>
+                  <output id="context-size-value" for="context-size">512</output>
+                </div>
+                <input id="context-size" name="context-size" type="range" min="128" max="8192" step="128" value="512" />
+                <div class="range-ends"><span>128</span><span>8.192</span></div>
+                <p class="control-help" id="context-help">Usato dal modello ideale in modalità prefill.</p>
+              </div>
+
+              <details class="advanced-control">
+                <summary>Assunzioni del modello <span aria-hidden="true">＋</span></summary>
+                <div class="advanced-content">
+                  <div class="control-label-row">
+                    <label for="compute-ceiling">Tetto compute comune</label>
+                    <output id="compute-ceiling-value" for="compute-ceiling">1.000 TFLOP/s</output>
+                  </div>
+                  <input id="compute-ceiling" name="compute-ceiling" type="range" min="10" max="10000" step="10" value="1000" />
+                  <p>Lo stesso tetto per tutti: regola didattica per isolare l’effetto della banda, non il picco dei chip.</p>
+                  <div class="control-label-row host-ram-row">
+                    <label for="host-ram">RAM del profilo x86</label>
+                    <output id="host-ram-value" for="host-ram">128 GB</output>
+                  </div>
+                  <input id="host-ram" name="host-ram" type="range" min="16" max="512" step="16" value="128" />
+                  <p id="host-ram-help">Configurazione host d’esempio; Intel e AMD non hanno una capacità unica di famiglia.</p>
+                </div>
+              </details>
+
+              <p class="reserve-note"><b>*</b> Pesi + 20% di riserva generica. Non è il calcolo della KV cache.</p>
+            </form>
+
+            <div class="results-panel">
+              <div class="results-panel-head">
+                <div>
+                  <span class="panel-kicker">RISULTATO / ROOFLINE</span>
+                  <h3>Quanto lavoro passa per ogni byte?</h3>
+                </div>
+                <span class="normalization-pill"><i aria-hidden="true"></i> TETTO NORMALIZZATO</span>
+              </div>
+
+              <div class="metric-row" aria-label="Metriche dello scenario">
+                <div class="metric-card metric-primary">
+                  <span>INTENSITÀ ARITMETICA</span>
+                  <strong id="intensity-value">4</strong>
+                  <small>FLOP / byte</small>
+                </div>
+                <div class="metric-card">
+                  <span>TETTO DI MEMORIA · PROFILO</span>
+                  <strong id="memory-ceiling-value">2,2</strong>
+                  <small>TFLOP/s ideali</small>
+                </div>
+                <div class="metric-card">
+                  <span>COLLO DI BOTTIGLIA</span>
+                  <strong class="bound-value" id="bottleneck-value">memory-bound</strong>
+                  <small id="fit-value">Fit: in memoria</small>
+                </div>
+              </div>
+
+              <figure class="roofline-figure" aria-labelledby="chart-heading" aria-describedby="chart-caption chart-summary">
+                <div class="chart-title-row">
+                  <div>
+                    <span class="chart-eyebrow">LIMITE TEORICO · NON BENCHMARK</span>
+                    <h3 id="chart-heading">Il punto incontra il tetto</h3>
+                  </div>
+                  <span class="chart-unit">TFLOP/s</span>
+                </div>
+                <div class="chart-frame" id="roofline-chart" data-testid="roofline-chart"></div>
+                <figcaption id="chart-caption">
+                  <span>← memory-bound</span>
+                  <span>Intensità aritmetica · FLOP/byte</span>
+                  <span>compute-bound →</span>
+                </figcaption>
+                <p class="chart-summary" id="chart-summary" aria-live="polite"></p>
+              </figure>
+
+              <div class="legend-wrap">
+                <div class="legend-heading"><span>PROFILI IN CONFRONTO</span><span>Seleziona sopra per i dettagli</span></div>
+                <div class="chart-legend" id="chart-legend" aria-label="Legenda del grafico Roofline"></div>
+              </div>
+
+              <details class="data-table-disclosure">
+                <summary>Apri la tabella equivalente <span aria-hidden="true">↘</span></summary>
+                <div class="table-scroll">
+                  <table class="results-table">
+                    <caption>Limiti e fit per i profili selezionati</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Profilo</th>
+                        <th scope="col">Banda / livello</th>
+                        <th scope="col">Limite memoria</th>
+                        <th scope="col">Stato</th>
+                        <th scope="col">Fit</th>
+                      </tr>
+                    </thead>
+                    <tbody id="results-table-body"></tbody>
+                  </table>
+                </div>
+              </details>
+              <p class="normalization-note">
+                <span aria-hidden="true">i</span>
+                Un unico tetto compute normalizzato permette di isolare la banda. I picchi vendor in FP4, BF16, INT8 e FP16 non sono confrontabili direttamente.
+              </p>
+            </div>
+          </div>
+
+          <section class="flow-section" aria-labelledby="flow-title">
+            <div class="flow-heading">
+              <div>
+                <span class="panel-kicker">VISTA ARCHITETTURALE / <span id="flow-vendor">APPLE SILICON</span></span>
+                <h3 id="flow-title">Il percorso dei dati</h3>
+              </div>
+              <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true">
+                <span class="motion-icon" aria-hidden="true">Ⅱ</span>
+                <span id="motion-toggle-label">Metti in pausa</span>
+              </button>
+            </div>
+            <div class="flow-board" id="flow-board">
+              <div class="flow-node memory-node">
+                <span>01 · LIVELLO MEMORIA</span>
+                <strong id="flow-memory">Memoria unificata</strong>
+                <small id="flow-memory-type">UMA · condivisa</small>
+              </div>
+              <div class="flow-track" aria-hidden="true">
+                <span class="flow-track-label">DATA IN MOTION</span>
+                <canvas id="flow-canvas" class="flow-canvas"></canvas>
+                <span class="flow-track-arrow">›</span>
+              </div>
+              <div class="flow-node compute-node">
+                <span>02 · UNITÀ DI CALCOLO</span>
+                <strong id="flow-compute">CPU · GPU · Neural Engine</strong>
+                <small id="flow-compute-type">Esecuzione parallela</small>
+              </div>
+            </div>
+            <div class="flow-foot">
+              <p id="flow-note">Un pool condiviso riduce le copie esplicite; banda e capacità restano contese.</p>
+              <a id="active-source" href="https://www.apple.com/newsroom/2026/03/apple-debuts-m5-pro-and-m5-max-to-supercharge-the-most-demanding-pro-workflows/" target="_blank" rel="noreferrer">
+                <span id="active-source-label">Apri fonte del profilo</span><span aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </section>
+        </section>
+
+        <section class="method-section section-pad" id="metodo" aria-labelledby="method-title">
+          <div class="section-topline">
+            <p class="eyebrow"><span class="eyebrow-line"></span> 03 / IL METODO</p>
+            <span class="section-index">NESSUN NUMERO SENZA CONTESTO</span>
+          </div>
+          <div class="method-grid">
+            <div class="method-copy">
+              <h2 id="method-title">La curva è semplice.<br /><em>La realtà no.</em></h2>
+              <p>
+                Il Roofline è un limite superiore: mette in relazione il picco compute,
+                la banda e le operazioni per byte. È una lente utile, non una profezia.
+              </p>
+              <a class="text-link" href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2008/Archive/EECS-2008-134.pdf" target="_blank" rel="noreferrer">
+                Leggi il paper Roofline · Berkeley <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            <div class="method-equation" aria-label="La prestazione ottenibile è il minore tra il picco di calcolo e la banda di memoria per intensità aritmetica">
+              <span class="equation-label">PRESTAZIONE TEORICA OTTENIBILE</span>
+              <div><b>P</b><sub>attainable</sub> <span>=</span> min <span class="equation-bracket">[</span> <b>P</b><sub>peak</sub><span>,</span> <b>BW</b><span> × </span><b>I</b> <span class="equation-bracket">]</span></div>
+              <p><b>I</b> = operazioni / byte · <b>BW</b> = banda del livello dichiarato</p>
+            </div>
+          </div>
+
+          <div class="method-caveats">
+            <article>
+              <span class="caveat-number">01</span>
+              <h3>Precisione ≠ precisione</h3>
+              <p>FP4, BF16, INT8 e FP16 hanno throughput diversi. Non li ordiniamo su una scala unica.</p>
+            </article>
+            <article>
+              <span class="caveat-number">02</span>
+              <h3>Capacità ≠ banda</h3>
+              <p>Il fit stimato riguarda i pesi con una riserva generica; non calcola KV cache o workspace.</p>
+            </article>
+            <article>
+              <span class="caveat-number">03</span>
+              <h3>Picco ≠ misura</h3>
+              <p>Cache, runtime, forma dei kernel, interconnessione e potenza possono cambiare il risultato reale.</p>
+            </article>
+          </div>
+
+          <details class="source-details">
+            <summary>Fonti, assunzioni e limiti <span aria-hidden="true">＋</span></summary>
+            <div class="source-content">
+              <div>
+                <h3>Dati hardware</h3>
+                <p>Ogni profilo riporta ambito, livello di memoria e stato del dato. “Derivato” indica una conversione o una divisione da un totale vendor; “claim vendor” non è misura indipendente.</p>
+                <ul>
+                  <li><a href="https://www.apple.com/newsroom/2024/10/apple-introduces-m4-pro-and-m4-max/" target="_blank" rel="noreferrer">Apple · M4 Pro e M4 Max</a></li>
+                  <li><a href="https://www.apple.com/newsroom/2026/03/apple-debuts-m5-pro-and-m5-max-to-supercharge-the-most-demanding-pro-workflows/" target="_blank" rel="noreferrer">Apple · M5 Pro e M5 Max</a></li>
+                  <li><a href="https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x.html" target="_blank" rel="noreferrer">AMD · Ryzen 9 9950X</a></li>
+                  <li><a href="https://www.nvidia.com/en-us/data-center/dgx-b200/" target="_blank" rel="noreferrer">NVIDIA · DGX B200 (totali di sistema)</a></li>
+                  <li><a href="https://docs.cloud.google.com/tpu/docs/v6e" target="_blank" rel="noreferrer">Google Cloud · TPU v6e</a></li>
+                  <li><a href="https://groq.com/lpu/" target="_blank" rel="noreferrer">Groq · architettura LPU</a></li>
+                </ul>
+              </div>
+              <div>
+                <h3>Ipotesi del workload</h3>
+                <ul>
+                  <li>2 FLOP per MAC, pesi letti una volta e riusati sul batch/prompt.</li>
+                  <li>Pesi stimati: parametri × bit / 8; working set = pesi × 1,20.</li>
+                  <li>Decode: un token/step; prefill: i token del prompt selezionati.</li>
+                  <li>Attention, KV traffic, scale, dequantizzazione, attivazioni, kernel e trasferimenti sono esclusi.</li>
+                  <li>Per Intel la banda è un limite DDR5 teorico; per AMD stessa regola. Per B200 i valori sono derivati dal DGX a otto GPU.</li>
+                  <li>Per Groq la fonte dichiara oltre 80 TB/s SRAM, ma non la capacità utilizzabile: il fit resta non determinato.</li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <a class="footer-brand" href="#inizio">AI SILICON <span>/ LAB</span></a>
+        <p>Un laboratorio di architetture AI, non un benchmark.</p>
+        <a href="https://github.com/macel94/ai-roofline-lab" target="_blank" rel="noreferrer">Codice sorgente <span aria-hidden="true">↗</span></a>
+      </footer>
+    </div>
+  </body>
+</html>
