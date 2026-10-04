@@ -149,9 +149,29 @@ test.describe("demo statica senza autenticazione", () => {
       document.documentElement.style.scrollBehavior = "auto";
       window.scrollTo(0, 0);
     });
-    await page.waitForTimeout(160);
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve, reject) => {
+        const canvas = document.getElementById("flow-canvas");
+        if (!canvas) {
+          reject(new Error("Canvas flusso non trovato"));
+          return;
+        }
+        const observer = new IntersectionObserver((entries) => {
+          if (entries.some((entry) => !entry.isIntersecting)) {
+            observer.disconnect();
+            resolve();
+          }
+        });
+        observer.observe(canvas);
+        window.setTimeout(() => {
+          observer.disconnect();
+          reject(new Error("Canvas non è uscito dalla viewport"));
+        }, 3_000);
+      });
+    });
+    await page.waitForTimeout(100);
     const offscreenFrames = await page.evaluate(() => window.__observedAnimationFrames);
-    await page.waitForTimeout(160);
+    await page.waitForTimeout(200);
     expect(await page.evaluate(() => window.__observedAnimationFrames)).toBe(offscreenFrames);
   });
 
