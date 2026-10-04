@@ -43,15 +43,15 @@ export const MAX_COMPUTE_CEILING_TFLOPS = 10_000;
 
 export function validateScenario(input: ScenarioInput): string | null {
   if (!Number.isFinite(input.modelParamsBillion) || input.modelParamsBillion <= 0) {
-    return "La dimensione del modello deve essere un numero positivo.";
+    return "Model size must be a positive number.";
   }
 
   if (![4, 8, 16].includes(input.weightBits)) {
-    return "La precisione dei pesi non è supportata da questo modello didattico.";
+    return "This educational model does not support that weight precision.";
   }
 
   if (!Number.isInteger(input.batch) || input.batch < 1 || input.batch > 32) {
-    return "Il batch deve essere un intero tra 1 e 32.";
+    return "Batch size must be an integer from 1 to 32.";
   }
 
   if (
@@ -59,7 +59,7 @@ export function validateScenario(input: ScenarioInput): string | null {
     input.contextTokens < 128 ||
     input.contextTokens > 8192
   ) {
-    return "Il contesto deve essere compreso tra 128 e 8.192 token.";
+    return "Prompt length must be between 128 and 8,192 tokens.";
   }
 
   if (
@@ -67,15 +67,15 @@ export function validateScenario(input: ScenarioInput): string | null {
     input.computeCeilingTFLOPS < MIN_COMPUTE_CEILING_TFLOPS ||
     input.computeCeilingTFLOPS > MAX_COMPUTE_CEILING_TFLOPS
   ) {
-    return `Il tetto compute deve essere tra ${MIN_COMPUTE_CEILING_TFLOPS} e ${MAX_COMPUTE_CEILING_TFLOPS} TFLOP/s.`;
+    return `The compute ceiling must be between ${MIN_COMPUTE_CEILING_TFLOPS} and ${MAX_COMPUTE_CEILING_TFLOPS} TFLOP/s.`;
   }
 
   if (!Number.isFinite(input.hostRamGB) || input.hostRamGB < 16 || input.hostRamGB > 512) {
-    return "La RAM host deve essere tra 16 e 512 GB.";
+    return "Host RAM must be between 16 and 512 GB.";
   }
 
   if (input.phase !== "decode" && input.phase !== "prefill") {
-    return "La fase del workload non è valida.";
+    return "The workload phase is invalid.";
   }
 
   return null;

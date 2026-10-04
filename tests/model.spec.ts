@@ -5,6 +5,7 @@ import {
   type ScenarioInput,
 } from "../src/domain/model";
 import { getProfile } from "../src/data/profiles";
+import { formatNumber } from "../src/visuals/roofline";
 
 function input(overrides: Partial<ScenarioInput> = {}): ScenarioInput {
   return {
@@ -19,8 +20,8 @@ function input(overrides: Partial<ScenarioInput> = {}): ScenarioInput {
   };
 }
 
-test.describe("modello didattico Roofline", () => {
-  test("calcola pesi, riserva, intensità e limite di memoria in decode", () => {
+test.describe("Roofline domain model", () => {
+  test("calculates weight footprint, reserve, intensity, and decode memory roof", () => {
     const profile = getProfile("m5-max");
     expect(profile).toBeDefined();
     if (!profile) return;
@@ -35,7 +36,7 @@ test.describe("modello didattico Roofline", () => {
     expect(result.bottleneck).toBe("memory");
   });
 
-  test("il riuso ideale dei pesi aumenta l'intensità con il batch", () => {
+  test("ideal weight reuse increases intensity with batch size", () => {
     const profile = getProfile("m5-max");
     expect(profile).toBeDefined();
     if (!profile) return;
@@ -46,7 +47,7 @@ test.describe("modello didattico Roofline", () => {
     expect(calculateIntensity("decode", 8, 512, 4)).toBe(32);
   });
 
-  test("il prefill usa il numero di token del prompt nel riuso ideale", () => {
+  test("prefill uses prompt token count in idealized reuse", () => {
     const profile = getProfile("tpu-v6e");
     expect(profile).toBeDefined();
     if (!profile) return;
@@ -59,7 +60,7 @@ test.describe("modello didattico Roofline", () => {
     expect(result.bottleneck).toBe("compute");
   });
 
-  test("la ridge point è P_peak × 1000 / banda", () => {
+  test("ridge point equals P_peak × 1000 / bandwidth", () => {
     const result = calculateScenario(input(), {
       id: "test-ridge",
       bandwidthGBs: 250_000,
@@ -72,7 +73,7 @@ test.describe("modello didattico Roofline", () => {
     expect(result.bottleneck).toBe("balanced");
   });
 
-  test("classifica i due lati della soglia bilanciata ±5%", () => {
+  test("classifies both sides of the ±5% balanced boundary", () => {
     const memoryBound = calculateScenario(input(), {
       id: "below-ridge",
       bandwidthGBs: 237_250,
@@ -100,7 +101,7 @@ test.describe("modello didattico Roofline", () => {
     expect(computeBound.attainableTFLOPS).toBe(1_000);
   });
 
-  test("la capacità host segue la RAM di scenario, non la famiglia CPU", () => {
+  test("host capacity follows the configured system RAM", () => {
     const zen5 = getProfile("zen-5");
     expect(zen5).toBeDefined();
     if (!zen5) return;
@@ -113,7 +114,7 @@ test.describe("modello didattico Roofline", () => {
     expect(enough.fit).toBe("fits");
   });
 
-  test("un TPU singolo non contiene il working set da 70B INT4 stimato", () => {
+  test("a single TPU v6e chip does not fit the estimated 70B Q4 working set", () => {
     const tpu = getProfile("tpu-v6e");
     expect(tpu).toBeDefined();
     if (!tpu) return;
@@ -124,7 +125,7 @@ test.describe("modello didattico Roofline", () => {
     expect(result.fit).toBe("does-not-fit");
   });
 
-  test("la capacità Groq non pubblicata resta unknown", () => {
+  test("keeps unpublished Groq capacity unknown", () => {
     const groq = getProfile("groq-lpu");
     expect(groq).toBeDefined();
     if (!groq) return;
@@ -134,7 +135,7 @@ test.describe("modello didattico Roofline", () => {
     expect(result.fit).toBe("unknown");
   });
 
-  test("non inventa un Roofline se la banda non è disponibile", () => {
+  test("does not invent a Roofline when bandwidth is unavailable", () => {
     const result = calculateScenario(input(), {
       id: "unknown-bandwidth",
       bandwidthGBs: null,
@@ -148,7 +149,12 @@ test.describe("modello didattico Roofline", () => {
     expect(result.bottleneck).toBe("unknown");
   });
 
-  test("rifiuta input negativi, precisioni non supportate e valori non finiti", () => {
+  test("uses English numeric grouping and decimal punctuation", () => {
+    expect(formatNumber(2_048, 1)).toBe("2,048");
+    expect(formatNumber(2.5, 1)).toBe("2.5");
+  });
+
+  test("rejects negative, unsupported, and non-finite inputs", () => {
     const profile = getProfile("m5-max");
     expect(profile).toBeDefined();
     if (!profile) return;

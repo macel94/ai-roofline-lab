@@ -1,147 +1,140 @@
-# Specifica di prodotto — AI Silicon / Roofline Lab
+# Product Specification — AI Silicon / Roofline Lab
 
-- **Versione:** 0.1 — baseline pre-implementazione
-- **Data della verifica:** 4 ottobre 2026
-- **Stato:** specifica e test plan da approvare prima del codice applicativo
-- **Lingua del prodotto:** italiano
+- **Version:** 0.2 — English simulator-first refresh
+- **Date:** October 4, 2026
+- **Status:** Refresh specification frozen before implementation changes
+- **Product language:** English (United States)
 
-## 1. Problema e visione
+## 1. Product vision
 
-Le prestazioni dell’inferenza AI non dipendono soltanto dal picco di calcolo. Il riuso dei dati, la gerarchia di memoria, la banda disponibile, la precisione numerica e la forma del workload possono spostare il collo di bottiglia tra memoria e compute. Un confronto tra CPU, SoC con memoria unificata, GPU, TPU e LPU è utile solo se separa dati pubblicati, stime e ipotesi.
+AI inference performance is not determined by peak compute alone. Memory hierarchy, data reuse, bandwidth, numeric precision, and workload phase can move a workload between memory-bound and compute-bound regimes.
 
-**AI Silicon / Roofline Lab** è una demo frontend interattiva che rende visibili queste relazioni. L’utente modifica un workload LLM semplificato, osserva una curva Roofline e confronta il percorso dei dati nelle architetture. La demo è educativa: non esegue modelli e non predice benchmark reali.
+**AI Silicon / Roofline Lab** is a static, interactive comparison tool for exploring those trade-offs across Apple silicon, x86 CPUs, NVIDIA GPUs, Google TPUs, and Groq LPUs. The simulator uses a transparent educational Roofline model; it does not execute an LLM and does not claim to predict measured hardware performance.
 
-## 2. Utenti e valore
+The product’s primary action is **compare multiple architectures in one simulation**. A single-profile data-path inspection is optional and must never replace or narrow the comparison set.
 
-- **Studente / divulgatore:** capisce perché un workload può essere memory-bound o compute-bound.
-- **Sviluppatore ML:** esplora come precisione, batch e prefill/decode modificano intensità aritmetica e fit dei pesi.
-- **Analista hardware:** confronta gerarchie di memoria e verifica la provenienza delle specifiche.
-- **Stakeholder:** apre un URL pubblico senza account o backend.
+## 2. Target users
 
-## 3. Scope
+- **Learner or educator:** wants to see why compute and memory ceilings matter.
+- **ML engineer:** wants to explore how decode/prefill, quantized weight size, and batching affect arithmetic intensity.
+- **Hardware analyst:** wants sourced, qualified specifications and a repeatable comparison surface.
+- **Stakeholder:** wants to open and share a public demo with no login or service dependency.
 
-### Incluso
+## 3. Product scope
 
-- Pagina statica, client-side, TypeScript, senza autenticazione e senza API di runtime.
-- Profili di riferimento per Apple M4 Max, M5 Pro, M5 Max, Intel Lion Cove (profilo Core Ultra 9 285K), AMD Zen 5 (profilo Ryzen 9 9950X), NVIDIA Blackwell B200, Google TPU v6e/Trillium e Groq LPU.
-- Selettori locali per fase LLM (decode/prefill), dimensione dei pesi, precisione dei pesi, batch, token di contesto e tetto compute normalizzato.
-- Calcolo interattivo di intensità aritmetica, limite di memoria, tetto compute, risultato Roofline e stato di fit dei pesi.
-- Grafico Roofline SVG accessibile, tabella equivalente, fonti e avvertenze per i profili.
-- Un’animazione secondaria del flusso dati, pause/riduzione movimento e layout responsive.
-- Build statica pubblicabile gratuitamente su GitHub Pages da un nuovo repository pubblico.
+### In scope
 
-### Escluso
+- Static client-side TypeScript application, entirely in English (en-US), with no authentication, backend, API, analytics, or runtime CDN assets.
+- Eight reference profiles: Apple M4 Max, Apple M5 Pro, Apple M5 Max, Intel Lion Cove/Core Ultra 9 285K, AMD Zen 5/Ryzen 9 9950X, NVIDIA Blackwell B200, Google TPU v6e/Trillium, and Groq LPU.
+- All eight profiles included in the initial comparison.
+- Independent include/exclude controls, “Select all,” “Clear all,” and reset-to-default.
+- Workload controls for decode/prefill, model size, weight bits, batch, prompt length, a shared normalized compute ceiling, and configurable host RAM for x86 profiles.
+- Roofline chart, always-visible per-profile comparison results, and accessible table semantics.
+- Optional focused data-path view, independent of which profiles are included in the comparison.
+- Source, unit, scope, and evidence labels for hardware figures.
+- Lightweight data-flow animation with pause, reduced-motion, hidden-tab, and offscreen suspension.
+- Free deployment to GitHub Pages from a new public repository.
 
-- Esecuzione/inferenza di un LLM, chiamate cloud, login, backend, analytics o salvataggio remoto.
-- Benchmark, latenza/token o token/s reali, consumo energetico, prezzo o classifica universale.
-- Simulazione fedele di cache, kernel, compiler, interconnessioni, schedulazione, KV cache o runtime vendor.
-- Aggiornamento automatico delle specifiche da Internet.
-- Uso di numeri non verificati come fatti. Le affermazioni senza fonte comparabile sono omesse o etichettate come stime.
+### Out of scope
 
-## 4. Storie utente — INVEST
+- Executing an LLM, GPU kernel, cloud workload, or hardware benchmark.
+- Login, user account, database, backend, telemetry, API, or automatic data refresh.
+- Measured token/s, latency, energy, cost, or a universal vendor ranking.
+- Exact simulation of caches, kernel occupancy, KV cache, network fabrics, compilers, scheduling, or thermal throttling.
+- Presenting unlike FP4, BF16, INT8, FP16, CPU, and sparse/dense peaks as a single comparable benchmark.
 
-| ID | Storia | Independent | Negotiable | Valuable | Estimable | Small | Testable |
+## 4. INVEST user stories
+
+| ID | User story | Independent | Negotiable | Valuable | Estimable | Small | Testable |
 |---|---|---|---|---|---|---|---|
-| US-01 | Come utente, voglio impostare un workload, così da vedere l’effetto di batch, precisione e fase LLM. | Controlli e calcolo locali. | Preset e range sono configurabili. | Risponde alla domanda didattica principale. | Input e formula delimitati. | Una scheda di scenario. | Valori e grafico verificabili. |
-| US-02 | Come analista, voglio selezionare profili hardware, così da confrontare banda, memoria e collo di bottiglia. | Ogni profilo è indipendente. | Catalogo e dettagli estendibili. | Rende confrontabili famiglie diverse. | Dataset statico tipizzato. | Otto profili iniziali. | Selezioni e metriche testabili. |
-| US-03 | Come studente, voglio vedere il punto operativo sul Roofline, così da distinguere memory-bound e compute-bound. | Verificabile con uno scenario fixture senza dipendere dalla UI dei controlli. | Scala/assunzioni sono esplicite. | Spiega la relazione prestazione–intensità. | Formula standard e testabile. | Un chart SVG. | Assi, curve, punto e stato verificabili. |
-| US-04 | Come revisore, voglio aprire fonti e limiti di ciascun numero, così da riconoscere fatti, derivazioni e claim vendor. | Fonti associate ai profili. | Dettagli espandibili. | Evita falsa precisione. | Ogni campo ha provenienza. | Un pannello fonti. | Label e link verificabili. |
-| US-05 | Come visitatore, voglio esplorare il flusso dati animato, così da capire le differenze tra UMA, HBM, systolic array e SRAM streaming. | La scena segue il profilo selezionato. | Velocità e pausa configurabili. | Rende intuitiva la gerarchia. | Una scena, pochi elementi. | Un canvas decorativo. | Avvio, pausa e reduced motion testabili. |
-| US-06 | Come utente senza account, voglio usare la demo da tastiera e su schermi piccoli, così da poterla provare ovunque. | Non richiede rete o login. | Dettagli visuali non essenziali. | Estende l’accesso. | Requisiti standard. | Un pass di accessibilità/responsive. | E2E desktop/mobile/tastiera. |
+| US-01 | As a visitor, I want the simulator visible immediately so I can try it without reading a long introduction. | Uses the shared initial scenario. | Exact hero copy/layout may change. | Delivers the main value immediately. | One compact first-screen layout. | One entry viewport. | E2E at 1280×800. |
+| US-02 | As a user, I want all eight chips compared together so I can see differences under identical inputs. | Uses a shared calculation input. | Selector presentation may change. | Core product value. | Fixed profile dataset. | One comparison state. | Eight lines and eight results on load. |
+| US-03 | As a user, I want to add/remove profiles independently so I can reduce visual clutter without losing other results. | Per-profile inclusion is independent. | Colors and chip layout are negotiable. | Supports focused analysis. | Boolean inclusion per profile. | Toggle one profile. | Toggle preserves the other seven. |
+| US-04 | As a user, I want to focus a chip’s data path while keeping the comparison visible so I can inspect one architecture without reverting to a single-chip simulation. | Focus is separate from inclusion. | Detail-panel content is extensible. | Explains architecture mechanics. | One optional focused view. | One profile at a time, comparison remains multi-profile. | E2E verifies curves/results stay selected. |
+| US-05 | As an ML engineer, I want to adjust workload phase, model size, precision, batch, and context so I can explore how arithmetic intensity changes. | The model is a pure function. | Presets/ranges may be tuned. | Explains workload-dependent limits. | Inputs and formulas are bounded. | One scenario panel. | Numerical model tests. |
+| US-06 | As a reviewer, I want sources and assumptions beside the results so I can distinguish published facts, derived values, and vendor claims. | Provenance is attached to each profile. | Disclosure layout is negotiable. | Prevents false precision. | Static source metadata. | One provenance panel. | Labels/links are testable. |
+| US-07 | As a keyboard, mobile, or reduced-motion user, I want the complete comparison to remain operable so the experience does not depend on hover, color, or animation. | Uses shared controls and semantics. | Visual details may change. | Inclusive access. | WCAG/responsive constraints. | One accessibility pass. | Playwright + manual checks. |
 
-**Controllo INVEST:** ogni storia può essere sviluppata/testata con un confine esplicito (modello/fixture condiviso, non dipendenza dall’ordine UI); i dettagli di preset e rendering sono negoziabili senza alterare il valore; scope e stima sono limitati alla prima versione; ogni criterio è osservabile in browser.
+**INVEST review:** Each story can be implemented against the shared typed scenario/profile model without requiring another story’s visual component. Details remain negotiable; every story is bounded and has a measurable acceptance test.
 
-## 5. Requisiti EARS
+## 5. EARS requirements
 
-Il lessico EARS adottato è: **Ubiquitous** (sempre), **Event-driven** (quando accade un evento), **State-driven** (finché vale uno stato), **Optional** (quando una funzione opzionale è attiva) e **Unwanted behavior** (se si verifica una condizione non valida).
+EARS patterns used below: **Ubiquitous** (always), **Event-driven** (when an event occurs), **State-driven** (while a state holds), **Optional** (when a feature is enabled), and **Unwanted behavior** (if an invalid condition occurs).
 
-### R-01 — Esecuzione statica (Ubiquitous)
-Il sistema deve funzionare come frontend statico client-side e non deve richiedere autenticazione, server applicativo o segreti.
+### R-01 — English-only product (Ubiquitous)
+The system shall use English (en-US) for all user-visible text, profile data, accessible names, errors, tests, metadata, README, and project documentation.
 
-- **Given** il sito statico caricato, **When** l’utente modifica uno scenario, **Then** il calcolo avviene nel browser senza chiamate API.
-- **Given** una nuova visita, **When** si apre la pagina, **Then** tutte le funzioni principali sono disponibili senza account.
+- **Given** any screen or profile, **When** its text is rendered, **Then** the copy is English and uses the shared terminology glossary.
+- **Given** a number is displayed, **When** it is formatted, **Then** it uses a decimal point, comma grouping, and consistent SI units.
 
-### R-02 — Catalogo architetture (Event-driven)
-Quando la demo viene inizializzata, il sistema deve mostrare otto profili: M4 Max, M5 Pro, M5 Max, Lion Cove/Core Ultra 9 285K, Zen 5/Ryzen 9 9950X, B200, TPU v6e e Groq LPU.
+### R-02 — Static and unauthenticated (Ubiquitous)
+The system shall run as a static client-side site without login, application server, API, secret, analytics, or external runtime asset.
 
-- **Given** la pagina inizializzata, **When** l’utente consulta il confronto, **Then** ogni profilo mostra famiglia, memoria, banda disponibile e tipo di evidenza.
-- **Given** un profilo è una famiglia o una configurazione derivata, **When** viene visualizzato, **Then** la UI lo identifica come profilo rappresentativo, non come proprietà universale dell’ISA.
+### R-03 — Exact eight-profile catalog (Ubiquitous)
+The system shall contain exactly the eight reference profiles named in Section 3, with a source/evidence state for each numeric hardware value.
 
-### R-03 — Provenienza e unità (Ubiquitous)
-Ogni specifica numerica hardware deve esporre unità, livello di memoria, configurazione, fonte e stato (**produttore**, **derivato**, **stima didattica** o **non disponibile**).
+### R-04 — Default multi-chip comparison (Event-driven)
+When a clean session opens, the system shall include all eight profiles, show the selected count, plot all available Roofline curves, and render one result row/card per included profile.
 
-- **Given** un numero visibile, **When** l’utente apre i dettagli, **Then** può identificare la fonte e capire se è un dato del singolo chip, di un sistema multi-chip o un valore derivato.
-- **Given** una fonte non specifica un dato, **When** l’interfaccia lo mostra, **Then** usa “non disponibile” e non inventa uno zero o un numero sostitutivo.
+- **Given** a clean load, **When** the first comparison is rendered, **Then** all eight profiles are selected simultaneously and no profile is focused.
+- **Given** a 1280×800 viewport at 100% zoom, **When** the page is at its top, **Then** the primary inputs, profile inclusion controls, chart, and comparison summary are visible or directly operable without scrolling through an introductory gallery.
 
-### R-04 — Input scenario (Event-driven)
-Quando l’utente modifica fase, parametri, precisione, batch, token o tetto compute, il sistema deve aggiornare i risultati localmente.
+### R-05 — Independent inclusion (Event-driven)
+When a user toggles a profile’s inclusion control, the system shall add or remove only that profile’s line and comparison result.
 
-- **Given** un input valido, **When** il suo valore cambia, **Then** intensità, punto del grafico, limite prestazionale, fit e classificazione si aggiornano.
-- **Given** il mode decode, **When** l’utente cambia il batch, **Then** il modello applica l’ipotesi esplicita di riuso dei pesi.
-- **Given** il mode prefill, **When** l’utente cambia il numero di token, **Then** l’intensità varia in modo coerente con la formula documentata.
+- **Given** eight profiles selected, **When** one is excluded, **Then** the other seven remain selected and their input/results are unchanged.
+- **Given** fewer than eight selected, **When** “Select all” or reset-to-default is activated, **Then** all eight return.
+- **Given** zero profiles selected, **When** the comparison is rendered, **Then** an explicit empty state and “Select all” action appear; stale results are not shown.
 
-### R-05 — Modello Roofline (Ubiquitous)
-Il sistema deve applicare `P_attainable = min(P_peak, BW × I)` con conversione coerente delle unità e deve mostrare `I`, i due limiti e il punto operativo.
+### R-06 — Always-visible results (State-driven)
+While profiles are included, the system shall keep their result summaries visible by default; the user shall not need to open a collapsed table or select one chip to compare them.
 
-- **Given** banda, intensità e tetto validi, **When** il sistema calcola lo scenario, **Then** il risultato è il minore tra tetto compute e tetto di memoria.
-- **Given** un profilo con banda sconosciuta, **When** viene selezionato, **Then** non produce una curva numerica fittizia.
+Each row shall identify the profile, bandwidth/memory scope, modeled memory roof, bottleneck state, and capacity-fit state.
 
-### R-06 — Classificazione collo di bottiglia (Event-driven)
-Quando viene aggiornato uno scenario, il sistema deve etichettare il punto come **memory-bound**, **compute-bound**, **bilanciato** o **dati insufficienti**.
+### R-07 — Shared workload inputs (Event-driven)
+When the user changes phase, model parameters, weight bits, batch, prompt tokens, normalized compute ceiling, or host RAM, the system shall recompute all included profiles from the same input state.
 
-- **Given** il limite di memoria è inferiore di oltre la tolleranza al tetto compute, **When** si calcola, **Then** lo stato è memory-bound.
-- **Given** il tetto compute è inferiore di oltre la tolleranza al limite di memoria, **When** si calcola, **Then** lo stato è compute-bound.
-- **Given** i limiti differiscono entro il 5%, **When** si calcola, **Then** lo stato è bilanciato e la soglia è visibile.
+Default scenario: 7B parameters, 4-bit weights, batch 1, decode, 512 prompt tokens, shared compute ceiling 1,000 TFLOP/s, host RAM 128 GB.
 
-### R-07 — Fit memoria (Unwanted behavior / State-driven)
-Se il working set stimato eccede una capacità nota, il sistema deve indicare “non entra nel profilo”; mentre la capacità è ignota o configurabile, deve mostrare “da verificare/configurare”.
+### R-08 — Optional architecture focus (Optional)
+When a user chooses a profile in “Data path focus,” the system shall emphasize its memory/compute flow without removing, replacing, or hiding any included curve or result.
 
-- **Given** una capacità nota inferiore al working set, **When** il modello è modificato, **Then** il profilo non viene presentato come eseguibile su un singolo chip.
-- **Given** una capacità non pubblicata, **When** viene valutato il fit, **Then** il risultato è unknown e non “fit”.
+### R-09 — Roofline calculation (Ubiquitous)
+The system shall compute `P_attainable = min(P_peak, BW × I)` with documented units, show arithmetic intensity and both ceilings, and classify memory-bound, compute-bound, balanced (within ±5%), or unknown.
 
-### R-08 — Grafico e alternativa testuale (Ubiquitous)
-Il sistema deve fornire un grafico Roofline SVG con assi, unità, curve, ridge point e marker, insieme a una tabella equivalente leggibile da screen reader.
+### R-10 — Capacity fit (Unwanted behavior / State-driven)
+If the estimated working set exceeds a known capacity, the system shall label the profile “Does not fit” for that configured profile; if capacity is unknown, it shall show “Unknown” rather than fit or zero.
 
-- **Given** una viewport desktop o mobile, **When** il grafico è aggiornato, **Then** il punto resta entro il plot o gli assi sono adattati.
-- **Given** un’informazione codificata con colore, **When** l’utente la consulta, **Then** è disponibile anche un nome, marker o testo.
+### R-11 — Source and evidence (Ubiquitous)
+Each hardware value shall show units, memory level, device/system scope, source, and one of manufacturer-reported, derived, manufacturer claim, illustrative, or unknown.
 
-### R-09 — Visualizzazione flusso dati (State-driven)
-Mentre la scena è in riproduzione, il canvas interseca la viewport e la pagina è visibile, il sistema deve animare un numero limitato di particelle usando `requestAnimationFrame`, senza aggiornamenti DOM per frame.
+### R-12 — Validation and empty/error states (Unwanted behavior)
+If an input is invalid or out of range, the system shall show an actionable inline English message and shall not silently calculate from a substituted value.
 
-- **Given** l’animazione attiva, **When** passa un frame, **Then** il canvas avanza con delta-time e non ricalcola il layout dell’intera pagina.
-- **Given** l’utente mette in pausa, la pagina diventa hidden o il canvas esce dalla viewport, **When** il prossimo frame è richiesto, **Then** il ciclo si arresta o sospende e riprende quando le condizioni tornano valide.
+### R-13 — Accessibility and responsive design (Ubiquitous)
+The system shall support keyboard operation, visible focus, accessible names, non-color series identification, WCAG 2.2 AA contrast, reduced motion, and responsive layouts from 360 px to desktop.
 
-### R-10 — Movimento ridotto (Optional)
-Quando `prefers-reduced-motion` è attivo o l’utente preme pausa, il sistema deve mostrare una scena statica e mantenere intatti dati e controlli.
+### R-14 — Performance and motion (State-driven)
+While the canvas is playing, its element intersects the viewport, the document is visible, and reduced motion is not requested, the system shall animate at a target of 60 fps with a bounded `requestAnimationFrame` loop and no per-frame DOM/layout updates. It shall suspend when paused, hidden, offscreen, or reduced-motion is enabled.
 
-### R-11 — Accessibilità e responsive (Ubiquitous)
-Il sistema deve essere utilizzabile da tastiera, avere focus visibile e label semantiche, rispettare almeno WCAG 2.2 AA (testo normale 4,5:1; testo grande e componenti grafici 3:1) e funzionare da 360 px a desktop.
+### R-15 — Comparison performance (State-driven)
+While all eight profiles are included, changing an input or selection shall keep the interface responsive; target update time is under 100 ms on the reference desktop, with 60 fps as the animation goal and 55 fps minimum operational tolerance for the local performance check.
 
-- **Given** navigazione solo tastiera, **When** l’utente raggiunge slider, selettori e disclosure, **Then** ogni controllo è operabile e annunciato.
-- **Given** viewport 360×800 o zoom 200%, **When** la pagina viene usata, **Then** contenuto e controlli restano disponibili senza overflow orizzontale della pagina.
+## 6. English terminology and formatting
 
-### R-12 — Performance (State-driven)
-Mentre la scena è attiva, su un desktop di riferimento il target è 60 fps (budget 16,7 ms/frame); su browser o dispositivi meno rapidi il sistema deve restare interattivo e poter ridurre movimento/dettagli.
+- **Arithmetic intensity:** FLOP/byte; never abbreviate as “AI.”
+- **Peak compute:** precision-specific manufacturer/theoretical metric, not a measured result.
+- **Attainable performance:** Roofline upper bound.
+- **Memory bandwidth:** always identify the level (UMA, DDR5, HBM, SRAM).
+- **Memory-bound / compute-bound:** hyphenated.
+- **Fits / Does not fit / Unknown:** distinct capacity states.
+- Use en-US formatting (e.g. `2,048`, `2.5`, `1,638 GB/s`), decimal GB/GB/s, and `FLOP/s`, `TFLOP/s`, `PFLOP/s` consistently.
 
-- **Given** il dataset massimo iniziale, **When** l’utente cambia un controllo, **Then** calcolo e aggiornamento sono sincroni e limitati al grafico/metriche, non a un loop DOM.
-- **Given** una limitazione hardware, **When** il target non è sostenibile, **Then** i controlli funzionano anche con animazione ridotta o sospesa.
+## 7. Definition of Done
 
-### R-13 — Nessuna dipendenza di runtime remota (Ubiquitous)
-La demo non deve caricare font, immagini, librerie, analytics o dati da CDN/API; i link alle fonti sono navigazione facoltativa.
-
-## 6. Regole di contenuto
-
-1. Le bande di UMA, DDR, HBM e SRAM sono descritte con il rispettivo livello e non sono presentate come risorse perfettamente equivalenti.
-2. Le curve del grafico sono una **normalizzazione didattica**: il tetto compute è unico e modificabile dall’utente per isolare l’effetto della banda. Non rappresenta il picco compute di ogni prodotto.
-3. I picchi vendor in formati diversi sono esposti, quando verificati, solo nelle schede con formato/sparsitá/sistema espliciti; non vengono ordinati come benchmark comune.
-4. Il fit usa pesi più una riserva didattica del 20%; non calcola KV cache, workspace o frammentazione per architettura.
-5. La classificazione assume banda teorica e riuso ideale; non include latenza kernel, utilization, PCIe, interconnessioni, potenza o thermal throttling.
-6. Fonti e ipotesi consultate il 4 ottobre 2026; i dati non si aggiornano automaticamente.
-
-## 7. Definition of Done — specifica
-
-- Tutti gli EARS R-01…R-13 hanno almeno un test o una verifica manuale mappata in `test-plan.md`.
-- La formula e ciascuna conversione di unità sono documentate e coperte da test numerici.
-- Ogni profilo ha una provenienza oppure un avviso di dato derivato/non disponibile.
-- La UI non presenta il risultato come benchmark, classifica o token/s reali.
-- Build statica, test E2E senza autenticazione e workflow Pages sono descritti prima dell’implementazione.
+- All visible and documentation content is English.
+- All eight profiles are selected by default; inclusion toggles are independent; a zero-selection empty state exists.
+- Comparison results stay visible for every included chip when a data-path profile is focused.
+- The primary lab is usable at 1280×800 without an introductory gallery scroll.
+- Unit tests cover the math and edge cases; E2E covers default multi-select, toggles, focus, English accessibility names, keyboard, mobile, motion, and live sources.
+- The static GitHub Pages site deploys successfully and the live URL returns 200 with working relative assets.

@@ -1,37 +1,38 @@
 # AI Silicon / Roofline Lab
 
-Laboratorio interattivo, statico e in italiano per esplorare il Roofline e i colli di bottiglia nell’inferenza AI: Apple Silicon, Intel/AMD x86, NVIDIA Blackwell, Google TPU e Groq LPU.
+An interactive, static TypeScript Roofline lab for exploring AI inference bottlenecks across Apple silicon, Intel/AMD x86, NVIDIA Blackwell, Google TPU, and Groq LPU.
 
-La demo è progettata per funzionare senza account, backend o API. Il grafico è una simulazione didattica normalizzata, non un benchmark né una previsione di token/s reali.
+**Live demo:** [macel94.github.io/ai-roofline-lab](https://macel94.github.io/ai-roofline-lab/)
 
-## Documentazione pre-implementazione
+**Source:** [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab)
 
-- [Specifica prodotto — INVEST/EARS](docs/specification.md)
-- [Progetto tecnico e modello matematico](docs/technical-design.md)
-- [Fonti e verifica dei claim](docs/research.md)
-- [Piano test, E2E e Pages](docs/test-plan.md)
+All eight architecture profiles are selected together by default. The shared Roofline compute ceiling is explicitly normalized and user-adjustable; this is an educational model, not a benchmark or a prediction of real tokens/s.
 
-> Baseline documentale redatta prima del codice applicativo e revisionata in parallelo da tre subagenti read-only.
+The site requires no account, backend, API key, or runtime network service. Source links are optional and open only when clicked.
 
-## Esecuzione locale
+## Run locally
 
 ```sh
 npm ci
-npx playwright install chromium  # una sola volta per i test E2E locali
 npm run dev
 ```
 
-Altri controlli disponibili:
+Open the local Vite URL shown in the terminal. One-time local E2E setup:
 
 ```sh
+npx playwright install chromium
 npm run typecheck
 npm run test:e2e
-npm run build
-npm run preview
 ```
 
-`npm run test:e2e` ricostruisce `dist/` e avvia Playwright contro la build statica tramite `vite preview`. Non servono `.env`, chiavi, login o API. Tutti i pacchetti applicativi sono strumenti di sviluppo; la pagina pubblicata è statica.
+`npm run test:e2e` builds `dist/` and runs Playwright against the static output served with `vite preview`.
 
-## Pubblicazione
+## Project documentation
 
-Repository pubblico: [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab). Demo live su [macel94.github.io/ai-roofline-lab](https://macel94.github.io/ai-roofline-lab/), pubblicata gratuitamente con GitHub Pages.
+- [Product specification — INVEST and EARS](docs/specification.md)
+- [Technical design and model](docs/technical-design.md)
+- [Research, sources, and data qualifications](docs/research.md)
+- [Test and deployment plan](docs/test-plan.md)
+- [Decision log and parallel reviews](docs/decision-log.md)
+
+The English refresh was specified and reviewed by parallel read-only subagents before the UI implementation changed.

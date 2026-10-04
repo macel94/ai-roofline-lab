@@ -27,88 +27,164 @@ async function installAnimationProbe(page: Page): Promise<void> {
   });
 }
 
-test.describe("demo statica senza autenticazione", () => {
-  test("carica il titolo, gli otto profili e il grafico senza richieste esterne", async ({ page }) => {
+async function loadSimulator(page: Page, width = 1280, height = 800): Promise<void> {
+  await page.setViewportSize({ width, height });
+  await page.goto("/");
+}
+
+test.describe("English multi-chip Roofline simulator", () => {
+  test("loads above the fold with all eight chips included and visible results", async ({ page }) => {
     const externalRequests: string[] = [];
+    const pageErrors: string[] = [];
     page.on("request", (request) => {
       const origin = new URL(request.url()).origin;
       if (origin !== "http://127.0.0.1:4173") externalRequests.push(request.url());
     });
+    page.on("pageerror", (error) => pageErrors.push(error.message));
 
-    await page.goto("/");
+    await loadSimulator(page);
 
     await expect(page).toHaveTitle(/AI Silicon \/ Roofline Lab/);
-    await expect(page.locator("html")).toHaveAttribute("lang", "it");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Segui i dati.");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Where AI hits");
     await expect(page.locator(".profile-card")).toHaveCount(8);
+    await expect(page.locator(".profile-card[aria-pressed='true']")).toHaveCount(8);
+    await expect(page.locator("#selected-count")).toHaveText("8 of 8 included");
     await expect(page.locator("#roofline-chart svg[role='img']")).toBeVisible();
     await expect(page.locator(".roofline-line")).toHaveCount(8);
     await expect(page.locator(".legend-item")).toHaveCount(8);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
+    await expect(page.locator("#comparison-table")).toBeVisible();
+
+    const firstViewport = await page.evaluate(() => ({
+      chartTop: document.querySelector("#roofline-chart")?.getBoundingClientRect().top ?? Infinity,
+      controlsTop: document.querySelector("#scenario-form")?.getBoundingClientRect().top ?? Infinity,
+    }));
+    expect(firstViewport.controlsTop).toBeLessThan(800);
+    expect(firstViewport.chartTop).toBeLessThan(800);
+
+    const visibleCopy = await page.locator("body").innerText();
+    expect(visibleCopy).toContain("Where AI hits");
+    expect(visibleCopy).toContain("Choose the paths to include");
     expect(externalRequests).toEqual([]);
+    expect(pageErrors).toEqual([]);
   });
 
-  test("seleziona un profilo e aggiorna flusso, fonte e marker attivo", async ({ page }) => {
-    await page.goto("/");
-    const m4Card = page.getByRole("button", { name: /APPLE SILICON, M4 Max/ });
+  test("toggles profile inclusion independently and compares several chips together", async ({ page }) => {
+    await loadSimulator(page);
+    const m4 = page.locator('[data-profile-id="m4-max"]');
+    const m5 = page.locator('[data-profile-id="m5-max"]');
+    const intel = page.locator('[data-profile-id="lion-cove"]');
 
-    await m4Card.click();
+    await m4.click();
+    await expect(m4).toHaveAttribute("aria-pressed", "false");
+    await expect(m5).toHaveAttribute("aria-pressed", "true");
+    await expect(intel).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".roofline-line")).toHaveCount(7);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(7);
 
-    await expect(m4Card).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("#flow-vendor")).toHaveText("APPLE SILICON");
-    await expect(page.locator("#flow-memory")).toHaveText("Memoria unificata");
-    await expect(page.locator("#active-source")).toHaveAttribute("href", /apple\.com\/newsroom\/2024/);
-    await expect(page.locator("#bottleneck-value")).toHaveText("memory-bound");
-    await expect(page.locator(".roofline-line.is-active")).toHaveCount(1);
+    await intel.click();
+    await expect(page.locator(".roofline-line")).toHaveCount(6);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(6);
+    await expect(m5).toHaveAttribute("aria-pressed", "true");
+
+    await m4.click();
+    await expect(page.locator(".roofline-line")).toHaveCount(7);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(7);
+    await intel.click();
+    await expect(page.locator(".roofline-line")).toHaveCount(8);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
   });
 
-  test("il decode e il prefill aggiornano l’intensità con batch e token", async ({ page }) => {
-    await page.goto("/");
+  test("Select all, Clear all, and reset restore the documented comparison set", async ({ page }) => {
+    await loadSimulator(page);
+    await page.getByRole("button", { name: "Clear all" }).click();
+    await expect(page.locator(".profile-card[aria-pressed='true']")).toHaveCount(0);
+    await expect(page.locator("#roofline-chart .roofline-line")).toHaveCount(0);
+    await expect(page.locator("#comparison-empty")).toBeVisible();
+    await expect(page.locator("#comparison-table")).toBeHidden();
+
+    await page.getByRole("button", { name: "Select all eight" }).click();
+    await expect(page.locator(".profile-card[aria-pressed='true']")).toHaveCount(8);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
+
+    await page.getByRole("button", { name: "Clear all" }).click();
+    await setRangeValue(page, "#model-size", 70);
+    await page.getByRole("button", { name: "Reset scenario" }).click();
+    await expect(page.locator(".profile-card[aria-pressed='true']")).toHaveCount(8);
+    await expect(page.locator("#model-size-value")).toHaveText("7 B");
     await expect(page.locator("#intensity-value")).toHaveText("4");
+  });
+
+  test("data-path focus highlights one chip without removing comparison results", async ({ page }) => {
+    await loadSimulator(page);
+    await page.locator("#flow-details summary").click();
+    await page.locator("#flow-profile-select").selectOption("m4-max");
+
+    await expect(page.locator("#flow-memory")).toHaveText("Unified memory");
+    await expect(page.locator("#active-source")).toHaveAttribute("href", /apple\.com\/newsroom\/2024/);
+    await expect(page.locator(".profile-card[aria-pressed='true']")).toHaveCount(8);
+    await expect(page.locator(".roofline-line")).toHaveCount(8);
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
+    await expect(page.locator(".roofline-line.is-focused")).toHaveCount(1);
+
+    await page.locator("#flow-profile-select").selectOption("");
+    await expect(page.locator(".roofline-line.is-focused")).toHaveCount(0);
+    await expect(page.locator(".roofline-line")).toHaveCount(8);
+  });
+
+  test("decode, prefill, batch, and prompt length update every selected result", async ({ page }) => {
+    await loadSimulator(page);
+    await expect(page.locator("#intensity-value")).toHaveText("4");
+    await expect(page.locator("#chart-summary")).toContainText("4 FLOP/byte");
 
     await page.getByRole("radio", { name: /Prefill/ }).check();
-    await expect(page.locator("#intensity-value")).toHaveText("2.048");
-    await expect(page.locator("#chart-summary")).toContainText("2.048 FLOP/byte");
+    await expect(page.locator("#intensity-value")).toHaveText("2,048");
+    await expect(page.locator("#chart-summary")).toContainText("2,048 FLOP/byte");
     await expect(page.locator("#context-size")).toBeEnabled();
 
     await setRangeValue(page, "#batch-size", 8);
-    await expect(page.locator("#intensity-value")).toHaveText("16.384");
+    await expect(page.locator("#intensity-value")).toHaveText("16,384");
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
 
     await page.getByRole("radio", { name: /Decode/ }).check();
     await expect(page.locator("#intensity-value")).toHaveText("32");
     await expect(page.locator("#context-size")).toBeDisabled();
   });
 
-  test("il fit segnala non entra, entra e unknown senza inventare capacità", async ({ page }) => {
-    await page.goto("/");
+  test("capacity fit distinguishes does-not-fit, fits, and unknown", async ({ page }) => {
+    await loadSimulator(page);
     await setRangeValue(page, "#model-size", 70);
-    await page.getByRole("button", { name: /GOOGLE · TPU, TPU v6e/ }).click();
-    await expect(page.locator("#working-set-value")).toHaveText("42 GB");
-    await expect(page.locator("#fit-value")).toContainText("non entra");
+    const tpuRow = page.locator("#results-table-body tr").filter({ hasText: "TPU v6e" });
+    await expect(tpuRow).toContainText("Does not fit");
 
-    await page.getByRole("button", { name: /GROQ · LPU, Language Processing Unit/ }).click();
-    await expect(page.locator("#fit-value")).toHaveText("Fit: da verificare");
+    const groqRow = page.locator("#results-table-body tr").filter({ hasText: "Groq LPU" });
+    await expect(groqRow).toContainText("Unknown");
 
-    await page.getByRole("button", { name: /AMD · X86, Zen 5/ }).click();
     await setRangeValue(page, "#host-ram", 64);
-    await expect(page.locator("#fit-value")).toContainText("entra");
+    const amdRow = page.locator("#results-table-body tr").filter({ hasText: "Zen 5" });
+    await expect(amdRow).toContainText("Fits · estimated");
   });
 
-  test("mostra i claim vendor senza confonderli con i dati per chip", async ({ page }) => {
-    await page.goto("/");
-    const groqCard = page.getByRole("button", { name: /GROQ · LPU/ });
-    await expect(groqCard).toContainText("≥80 TB/s");
-    await groqCard.click();
+  test("profile details qualify manufacturer claims and expose a source", async ({ page }) => {
+    await loadSimulator(page);
+    const groq = page.locator('[data-profile-id="groq-lpu"]');
+    await expect(groq).toContainText("≥80 TB/s");
+
+    await page.locator("#flow-details summary").click();
+    await page.locator("#flow-profile-select").selectOption("groq-lpu");
     await expect(page.locator("#active-source")).toHaveAttribute("href", "https://groq.com/lpu/");
     await expect(page.locator("#flow-compute")).toHaveText("TSP · dataflow");
-    await expect(page.locator("#flow-note")).toContainText("non equivale");
+    await expect(page.locator("#flow-note")).toContainText("not equivalent");
+    await expect(page.locator("#results-table-body tr")).toHaveCount(8);
   });
 
-  test("i controlli sono utilizzabili da tastiera e la pagina non trabocca su mobile", async ({ page }) => {
-    await page.setViewportSize({ width: 360, height: 800 });
-    await page.goto("/");
+  test("keyboard controls work and the page has no mobile horizontal overflow", async ({ page }) => {
+    await loadSimulator(page, 360, 800);
     await page.keyboard.press("Tab");
     await expect(page.locator(":focus")).toBeVisible();
-    const modelSlider = page.getByRole("slider", { name: /Parametri del modello/ });
+
+    const modelSlider = page.getByRole("slider", { name: /Model size/ });
     await expect(modelSlider).toBeVisible();
     await modelSlider.focus();
     await page.keyboard.press("ArrowRight");
@@ -121,29 +197,29 @@ test.describe("demo statica senza autenticazione", () => {
     expect(width.page).toBeLessThanOrEqual(width.viewport + 1);
   });
 
-  test("l’animazione avanza e si ferma con il controllo pausa", async ({ page }) => {
+  test("animation runs on-screen, pauses, resumes, and suspends offscreen", async ({ page }) => {
     await installAnimationProbe(page);
-    await page.goto("/");
+    await loadSimulator(page);
+    await page.locator("#flow-details summary").click();
     await page.locator("#flow-board").scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
 
     const runningFrames = await page.evaluate(() => window.__observedAnimationFrames);
     expect(runningFrames).toBeGreaterThan(5);
 
-    const pauseButton = page.locator("#motion-toggle");
-    await expect(pauseButton).toHaveAttribute("aria-pressed", "true");
-    await pauseButton.click();
-    await expect(pauseButton).toHaveAttribute("aria-pressed", "false");
+    const motionButton = page.locator("#motion-toggle");
+    await expect(motionButton).toHaveAttribute("aria-pressed", "true");
+    await motionButton.click();
+    await expect(motionButton).toHaveAttribute("aria-pressed", "false");
     await page.waitForTimeout(160);
     const pausedFrames = await page.evaluate(() => window.__observedAnimationFrames);
     await page.waitForTimeout(160);
-    const stillPausedFrames = await page.evaluate(() => window.__observedAnimationFrames);
-    expect(stillPausedFrames).toBe(pausedFrames);
+    expect(await page.evaluate(() => window.__observedAnimationFrames)).toBe(pausedFrames);
 
-    await page.getByRole("button", { name: "Riprendi animazione" }).click();
+    await page.getByRole("button", { name: "Resume animation" }).click();
     await page.waitForTimeout(160);
     const resumedFrames = await page.evaluate(() => window.__observedAnimationFrames);
-    expect(resumedFrames).toBeGreaterThan(stillPausedFrames);
+    expect(resumedFrames).toBeGreaterThan(pausedFrames);
 
     await page.evaluate(() => {
       document.documentElement.style.scrollBehavior = "auto";
@@ -153,7 +229,7 @@ test.describe("demo statica senza autenticazione", () => {
       await new Promise<void>((resolve, reject) => {
         const canvas = document.getElementById("flow-canvas");
         if (!canvas) {
-          reject(new Error("Canvas flusso non trovato"));
+          reject(new Error("Flow canvas not found"));
           return;
         }
         const observer = new IntersectionObserver((entries) => {
@@ -165,7 +241,7 @@ test.describe("demo statica senza autenticazione", () => {
         observer.observe(canvas);
         window.setTimeout(() => {
           observer.disconnect();
-          reject(new Error("Canvas non è uscito dalla viewport"));
+          reject(new Error("Flow canvas did not leave the viewport"));
         }, 3_000);
       });
     });
@@ -175,20 +251,20 @@ test.describe("demo statica senza autenticazione", () => {
     expect(await page.evaluate(() => window.__observedAnimationFrames)).toBe(offscreenFrames);
   });
 
-  test("rispetta prefers-reduced-motion senza disabilitare controlli o calcoli", async ({ page }) => {
+  test("respects reduced motion while keeping comparison controls active", async ({ page }) => {
     await installAnimationProbe(page);
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.goto("/");
+    await loadSimulator(page);
+    await page.locator("#flow-details summary").click();
     await page.locator("#flow-board").scrollIntoViewIfNeeded();
 
-    const motionButton = page.getByRole("button", { name: "Movimento ridotto attivo" });
+    const motionButton = page.getByRole("button", { name: "Reduced motion active" });
     await expect(motionButton).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator("#intensity-value")).toHaveText("4");
     await page.waitForTimeout(200);
     expect(await page.evaluate(() => window.__observedAnimationFrames)).toBe(0);
 
     await page.getByRole("radio", { name: /Prefill/ }).check();
-    await expect(page.locator("#intensity-value")).toHaveText("2.048");
-    await expect(page.locator("#chart-summary")).toContainText("2.048 FLOP/byte");
+    await expect(page.locator("#intensity-value")).toHaveText("2,048");
   });
 });

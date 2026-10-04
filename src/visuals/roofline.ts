@@ -20,20 +20,20 @@ export interface RooflineRenderTargets {
 
 export function renderRoofline(
   targets: RooflineRenderTargets,
-  profiles: readonly ArchitectureProfile[],
+  includedProfiles: readonly ArchitectureProfile[],
   results: ReadonlyMap<string, ScenarioResult>,
-  activeProfileId: string,
+  focusedProfileId: string | null,
   input: ScenarioInput,
 ): void {
-  targets.chart.replaceChildren(createChart(profiles, results, activeProfileId, input));
-  renderLegend(targets.legend, profiles);
-  renderResultsTable(targets.tableBody, profiles, results);
+  targets.chart.replaceChildren(createChart(includedProfiles, results, focusedProfileId, input));
+  renderLegend(targets.legend, includedProfiles);
+  renderResultsTable(targets.tableBody, includedProfiles, results);
 }
 
 function createChart(
   profiles: readonly ArchitectureProfile[],
   results: ReadonlyMap<string, ScenarioResult>,
-  activeProfileId: string,
+  focusedProfileId: string | null,
   input: ScenarioInput,
 ): SVGSVGElement {
   const svg = svgElement("svg");
@@ -44,22 +44,24 @@ function createChart(
 
   const title = svgElement("title");
   title.id = "roofline-svg-title";
-  title.textContent = "Grafico Roofline normalizzato per l’inferenza AI";
+  title.textContent = "Normalized Roofline comparison for AI inference";
   svg.append(title);
 
   const description = svgElement("desc");
   description.id = "roofline-svg-description";
   description.textContent =
-    "Le linee diagonali rappresentano il limite di memoria per ciascun profilo; la linea orizzontale è il tetto compute condiviso scelto nello scenario. Il punto mostra l’intensità aritmetica corrente.";
+    "Diagonal lines represent the memory ceiling for each included profile. The horizontal line is the shared compute ceiling. Markers show the current workload for all included profiles.";
   svg.append(description);
 
   drawGrid(svg);
   drawComputeCeiling(svg, input.computeCeilingTFLOPS);
 
-  const orderedProfiles = [
-    ...profiles.filter((profile) => profile.id !== activeProfileId),
-    ...profiles.filter((profile) => profile.id === activeProfileId),
-  ];
+  const orderedProfiles = focusedProfileId
+    ? [
+        ...profiles.filter((profile) => profile.id !== focusedProfileId),
+        ...profiles.filter((profile) => profile.id === focusedProfileId),
+      ]
+    : profiles;
 
   for (const profile of orderedProfiles) {
     const result = results.get(profile.id);
@@ -67,21 +69,21 @@ function createChart(
       continue;
     }
 
-    const isActive = profile.id === activeProfileId;
+    const isFocused = profile.id === focusedProfileId;
     const path = svgElement("path");
     path.classList.add("roofline-line");
-    if (isActive) path.classList.add("is-active");
+    if (isFocused) path.classList.add("is-focused");
     path.setAttribute("d", createRooflinePath(profile.bandwidthGBs, input.computeCeilingTFLOPS));
     path.setAttribute("stroke", profile.color);
-    path.setAttribute("opacity", isActive ? "1" : "0.63");
+    path.setAttribute("opacity", focusedProfileId ? (isFocused ? "1" : "0.35") : "0.86");
     if (profile.lineDash) path.setAttribute("stroke-dasharray", profile.lineDash);
 
     const lineTitle = svgElement("title");
-    lineTitle.textContent = `${profile.name}: limite di memoria con banda ${profile.bandwidthLabel}.`;
+    lineTitle.textContent = `${profile.name}: memory ceiling at ${profile.bandwidthLabel}.`;
     path.append(lineTitle);
     svg.append(path);
 
-    if (result.ridgeIntensityFLOPPerByte !== null && isActive) {
+    if (result.ridgeIntensityFLOPPerByte !== null && isFocused) {
       drawRidgeGuide(svg, result.ridgeIntensityFLOPPerByte);
     }
 
@@ -92,7 +94,7 @@ function createChart(
     halo.classList.add("roofline-marker-halo");
     halo.setAttribute("cx", markerX.toFixed(2));
     halo.setAttribute("cy", markerY.toFixed(2));
-    halo.setAttribute("r", isActive ? "7.3" : "4.7");
+    halo.setAttribute("r", isFocused ? "7.3" : "4.7");
     halo.setAttribute("stroke", profile.color);
     svg.append(halo);
 
@@ -100,11 +102,12 @@ function createChart(
     marker.classList.add("roofline-marker");
     marker.setAttribute("cx", markerX.toFixed(2));
     marker.setAttribute("cy", markerY.toFixed(2));
-    marker.setAttribute("r", isActive ? "3.2" : "2.1");
+    marker.setAttribute("r", isFocused ? "3.2" : "2.1");
     marker.setAttribute("fill", profile.color);
     svg.append(marker);
   }
 
+  if (profiles.length === 0) drawEmptyState(svg);
   drawAxisTitles(svg);
   return svg;
 }
@@ -180,7 +183,7 @@ function drawComputeCeiling(svg: SVGSVGElement, computeCeilingTFLOPS: number): v
   label.setAttribute("x", (PLOT.left + PLOT.width - 4).toString());
   label.setAttribute("y", (y - 5).toFixed(2));
   label.setAttribute("text-anchor", "end");
-  label.textContent = "tetto compute comune";
+  label.textContent = "Shared compute ceiling";
   svg.append(label);
 }
 
@@ -196,12 +199,22 @@ function drawRidgeGuide(svg: SVGSVGElement, ridgeIntensity: number): void {
   svg.append(line);
 }
 
+function drawEmptyState(svg: SVGSVGElement): void {
+  const label = svgElement("text");
+  label.classList.add("chart-empty-label");
+  label.setAttribute("x", (PLOT.left + PLOT.width / 2).toString());
+  label.setAttribute("y", (PLOT.top + PLOT.height / 2).toString());
+  label.setAttribute("text-anchor", "middle");
+  label.textContent = "No profiles included — select a chip to compare.";
+  svg.append(label);
+}
+
 function drawAxisTitles(svg: SVGSVGElement): void {
   const yTitle = svgElement("text");
   yTitle.classList.add("chart-axis-label");
   yTitle.setAttribute("transform", `translate(17 ${PLOT.top + PLOT.height / 2}) rotate(-90)`);
   yTitle.setAttribute("text-anchor", "middle");
-  yTitle.textContent = "Prestazione teorica · TFLOP/s";
+  yTitle.textContent = "Attainable performance · TFLOP/s";
   svg.append(yTitle);
 }
 
@@ -209,7 +222,7 @@ function createRooflinePath(bandwidthGBs: number, computeCeilingTFLOPS: number):
   const points: string[] = [];
   const startLog = Math.log10(X_MIN);
   const endLog = Math.log10(X_MAX);
-  const sampleCount = 120;
+  const sampleCount = 100;
 
   for (let index = 0; index <= sampleCount; index += 1) {
     const intensity = 10 ** (startLog + ((endLog - startLog) * index) / sampleCount);
@@ -224,6 +237,15 @@ function createRooflinePath(bandwidthGBs: number, computeCeilingTFLOPS: number):
 
 function renderLegend(container: HTMLElement, profiles: readonly ArchitectureProfile[]): void {
   const fragment = document.createDocumentFragment();
+  if (profiles.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "legend-empty";
+    empty.textContent = "No profiles selected. Use Select all to restore the comparison.";
+    fragment.append(empty);
+    container.replaceChildren(fragment);
+    return;
+  }
+
   for (const profile of profiles) {
     const item = document.createElement("span");
     item.className = "legend-item";
@@ -250,11 +272,24 @@ function renderResultsTable(
   results: ReadonlyMap<string, ScenarioResult>,
 ): void {
   const fragment = document.createDocumentFragment();
+  if (profiles.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 5;
+    cell.className = "comparison-empty-cell";
+    cell.textContent = "No profiles included. Use Select all to restore the comparison.";
+    row.append(cell);
+    fragment.append(row);
+    container.replaceChildren(fragment);
+    return;
+  }
+
   for (const profile of profiles) {
     const result = results.get(profile.id);
     if (!result) continue;
 
     const row = document.createElement("tr");
+    row.style.setProperty("--profile-color", profile.color);
     const name = document.createElement("th");
     name.scope = "row";
     name.textContent = profile.name;
@@ -265,8 +300,8 @@ function renderResultsTable(
     const memoryLimit = document.createElement("td");
     memoryLimit.textContent =
       result.memoryCeilingTFLOPS === null
-        ? "n.d."
-        : `${formatItalian(result.memoryCeilingTFLOPS, 1)} TFLOP/s`;
+        ? "Unknown"
+        : `${formatNumber(result.memoryCeilingTFLOPS, 1)} TFLOP/s`;
 
     const bound = document.createElement("td");
     bound.textContent = bottleneckLabel(result.bottleneck);
@@ -283,29 +318,29 @@ function renderResultsTable(
 export function bottleneckLabel(bottleneck: ScenarioResult["bottleneck"]): string {
   switch (bottleneck) {
     case "memory":
-      return "memory-bound";
+      return "Memory-bound";
     case "compute":
-      return "compute-bound";
+      return "Compute-bound";
     case "balanced":
-      return "bilanciato ±5%";
+      return "Balanced ±5%";
     case "unknown":
-      return "dati insufficienti";
+      return "Unknown";
   }
 }
 
 export function fitLabel(fit: ScenarioResult["fit"]): string {
   switch (fit) {
     case "fits":
-      return "entra · stima";
+      return "Fits · estimated";
     case "does-not-fit":
-      return "non entra · stima";
+      return "Does not fit · estimated";
     case "unknown":
-      return "da verificare";
+      return "Unknown";
   }
 }
 
-export function formatItalian(value: number, maximumFractionDigits = 1): string {
-  return new Intl.NumberFormat("it-IT", {
+export function formatNumber(value: number, maximumFractionDigits = 1): string {
+  return new Intl.NumberFormat("en-US", {
     maximumFractionDigits,
     minimumFractionDigits: 0,
     useGrouping: true,
@@ -323,10 +358,10 @@ function yPosition(value: number): number {
 }
 
 function formatAxisValue(value: number): string {
-  if (value === 0.1) return "0,1";
-  if (value >= 1_000_000) return "1 M";
-  if (value >= 1_000) return `${formatItalian(value / 1_000, 0)}k`;
-  return formatItalian(value, 0);
+  if (value === 0.1) return "0.1";
+  if (value >= 1_000_000) return "1M";
+  if (value >= 1_000) return `${formatNumber(value / 1_000, 0)}k`;
+  return formatNumber(value, 0);
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

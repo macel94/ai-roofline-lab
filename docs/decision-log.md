@@ -1,24 +1,27 @@
-# Registro decisioni — AI Silicon / Roofline Lab
+# Decision Log — AI Silicon / Roofline Lab
 
-**Stato:** decisioni pre-implementazione, 4 ottobre 2026.
+**Refresh status:** English simulator-first release, October 4, 2026.
 
-| ID | Decisione | Motivo | Esito da verificare |
+| ID | Decision | Rationale | Verification |
 |---|---|---|---|
-| D-01 | Usare TypeScript strict + Vite, senza framework UI. | Sito mono-pagina statico; evitare runtime e bundle superflui. | Typecheck e build riproducibili. |
-| D-02 | Nessun backend, autenticazione, API, secret o `.env`. | Demo self-contained e pubblicabile su Pages. | Blocco rete esterna nei test. |
-| D-03 | Grafico SVG e tabella accessibile; animazione canvas isolata e sospesa fuori viewport. | SVG semplice per poche curve; canvas limitato per flusso decorativo a 60 fps, senza lavoro inutile off-screen. | Tastiera/screen reader, reduced motion, visibility e frame smoke. |
-| D-04 | Curva normalizzata con tetto compute unico/modificabile. | Non esistono picchi pubblici omogenei per tutte le architetture/precisioni. | Avvertenza visibile e metriche vendor fuori dal ranking. |
-| D-05 | Fonti, unità e status per ogni valore hardware. | Evitare di confondere chip/sistema, densità, FP4/BF16 e livelli di memoria. | Test dataset e disclosure UI. |
-| D-06 | Usare M4 Max, M5 Pro, M5 Max, Core Ultra 9 285K (profilo), Ryzen 9 9950X (profilo), B200, TPU v6e e Groq LPU. | Copre le famiglie e sottocategorie presenti nel brief. | Link/fatti in `research.md`; Intel marcato derivato. |
-| D-07 | Test E2E contro `dist/` con Playwright e deploy da GitHub Actions. | Verifica path statici reali e assenza di backend. | Workflow Pages verde e smoke sul sito live. |
-| D-08 | Nuovo repo pubblico `macel94/ai-roofline-lab`. | Isola il progetto e rende Pages gratuito su GitHub Free. | Creare solo dopo che codice e test sono pronti. |
+| D-01 | Strict TypeScript + Vite, no UI framework. | Static one-page app; keep runtime and bundle small. | Type-check and production build. |
+| D-02 | No backend, authentication, API, secret, or `.env`. | Self-contained public Pages demo. | Runtime network E2E. |
+| D-03 | SVG chart + accessible table; Canvas animation suspended offscreen. | SVG suits eight lines; bounded Canvas loop suits data-flow particles. | Keyboard, reduced motion, visibility, offscreen and frame tests. |
+| D-04 | One shared, adjustable compute ceiling for the Roofline chart. | Public peaks use incompatible precision/sparsity/system scopes. The chart isolates bandwidth instead of inventing a leaderboard. | Visible normalization caveat and profile-specific source facts. |
+| D-05 | Provenance, units, memory level, scope, and evidence label for each numeric profile field. | Avoid conflating chip/system, precision, claim, derivation, and measurement. | Data fixture tests and source disclosures. |
+| D-06 | Eight reference profiles: M4 Max, M5 Pro, M5 Max, Core Ultra 9 285K/Lion Cove, Ryzen 9 9950X/Zen 5, B200, TPU v6e, Groq LPU. | Covers the architectures in the brief. Intel bandwidth remains derived. | Links and qualifications in `research.md`. |
+| D-07 | Select all eight profiles by default; use independent include/exclude controls and keep results visible. | The product must compare chips together, not funnel users through one active chip. | E2E default-eight and independent-toggle tests. |
+| D-08 | Keep data-path focus separate from chart inclusion. | Users can inspect one architecture without losing the multi-chip comparison. | E2E focus does not alter selected series/rows. |
+| D-09 | Simulator first, compact header, responsive comparison workspace, English-only copy. | Remove the long scroll-to-demo path and deliver the requested language. | First viewport at 1280×800; English content audit. |
+| D-10 | Test built static output with Playwright; deploy via Node 24 GitHub Actions/Pages. | Verifies real relative assets and no backend; avoid deprecated Node 20 action runtimes. | English refresh passes 21 local tests; remote workflow runs on publish. |
+| D-11 | New public repository `macel94/ai-roofline-lab`. | Free Pages and isolation from all existing repositories. | Remote points only to the new repo; the initial site is live and the English refresh will redeploy there. |
 
-## Review parallele pre-codice
+## Parallel reviews
 
-Tre sessioni Pi indipendenti, read-only, avviate in parallelo tramite tmux:
+Three independent, read-only Pi reviews ran in parallel via tmux sessions before the initial docs and again for the English/UX refresh:
 
-- product/spec: INVEST, EARS, criteri di accettazione, scope ed edge case;
-- Roofline: precisione, intensità, prefill/decode, KV/memoria e limiti di comparabilità;
-- frontend/delivery: SVG/canvas, accessibilità, Playwright, budget e GitHub Pages.
+- Product/spec review: INVEST, EARS, multi-chip state, empty/focus cases.
+- Roofline/model review: intensity, precision, capacity, memory levels, source caveats.
+- UX/visual/English review: first viewport, multi-select/focus separation, instrument design, en-US terminology, accessibility, and performance.
 
-I risultati hanno guidato D-03…D-07; nessun subagente ha scritto sorgente applicativa.
+No reviewer wrote application code. Recommendations were incorporated into the docs before the corresponding implementation changes.
