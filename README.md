@@ -34,4 +34,4 @@ npm run preview
 
 ## Pubblicazione
 
-Repository previsto: [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab). URL Pages previsto: <https://macel94.github.io/ai-roofline-lab/>; verrà verificato dopo il deploy.
+Repository pubblico: [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab). Demo live su [macel94.github.io/ai-roofline-lab](https://macel94.github.io/ai-roofline-lab/), pubblicata gratuitamente con GitHub Pages.

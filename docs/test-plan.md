@@ -96,7 +96,7 @@ npm run preview
 - Trigger: push su `main` e `workflow_dispatch`.
 - Node 22.12+ (oppure Node 24) con cache npm e `npm ci`.
 - Installare Chromium Playwright per E2E; eseguire type-check, test e build prima del deploy.
-- Pubblicare l’artefatto `dist/` con `actions/upload-pages-artifact@v4` e `actions/deploy-pages@v4`; `actions/configure-pages@v5`.
+- Pubblicare l’artefatto `dist/` con `actions/upload-pages-artifact@v5` e `actions/deploy-pages@v5`; `actions/configure-pages@v6` (checkout/setup-node v7, runtime Node 24).
 - Permessi minimi: `contents: read`, `pages: write`, `id-token: write`; concurrency del gruppo `pages`.
 - Repository pubblico GitHub Free `macel94/ai-roofline-lab`; non cambiare impostazioni o codice di altri repository.
 

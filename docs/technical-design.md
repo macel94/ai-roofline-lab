@@ -114,22 +114,22 @@ A batch 8, l’ipotesi di riuso porta `I=32 FLOP/byte`. Per prefill di 512 token
 
 ```text
 index.html
+vite.config.ts
+playwright.config.ts
 src/
-  main.ts
-  styles.css
-  domain/model.ts         # formule pure, unità, classificazione, fit
+  main.ts                 # stato, controlli, aggiornamento DOM
+  styles.css              # layout responsive e stati accessibili
+  domain/model.ts         # formule, unità, classificazione e fit
   data/profiles.ts        # valori e provenienza tipizzati
-  ui/state.ts             # stato e controlli
-  ui/render.ts            # aggiornamento DOM accessibile
-  visuals/roofline.ts     # SVG, assi, curve e tabella
+  visuals/roofline.ts     # SVG, assi, curve, tabella e legenda
   visuals/data-flow.ts    # canvas + requestAnimationFrame
-  visuals/profiles.ts     # schemi statici dei data path
- tests/
-  model.spec.ts
-  demo.spec.ts
-  accessibility.spec.ts
- docs/
+public/
+  favicon.svg
+tests/
+  model.spec.ts           # casi numerici puri
+  demo.spec.ts            # E2E, tastiera, mobile e motion
 ```
+
 
 **Layout:** hero editoriale; pannello “scenario”; confronto profili; grafico + tabella; vista architettura selezionata; note fonti/assunzioni. Colori differenziati per architettura con label/pattern oltre al colore, tipografia di sistema, nessun font/asset remoto. Contrasto target WCAG 2.2 AA: almeno 4,5:1 per testo normale e 3:1 per testo grande/componenti grafici.
 
@@ -146,9 +146,9 @@ src/
 ## 7. Release target
 
 - Nome nuovo repository: `macel94/ai-roofline-lab` (collision check eseguito: non trovato tra i repo dell’account).
-- URL atteso: `https://macel94.github.io/ai-roofline-lab/`.
+- URL Pages pubblicato: `https://macel94.github.io/ai-roofline-lab/`.
 - `base: './'` per asset relativi della single-page, verificato anche sul sottopercorso Pages.
-- Build `dist/`; workflow GitHub Actions con `configure-pages@v5`, `upload-pages-artifact@v4`, `deploy-pages@v4`, permessi minimi `contents:read`, `pages:write`, `id-token:write`.
+- Build `dist/`; workflow GitHub Actions con `checkout@v7`, `setup-node@v7`, `configure-pages@v6`, `upload-pages-artifact@v5`, `deploy-pages@v5`, permessi minimi `contents:read`, `pages:write`, `id-token:write`.
 - Pages è gratuito per repo pubblici con GitHub Free; nessun token utente sarà incluso nel workflow o nel sito.
 
 ## 8. Review di design
