@@ -3,8 +3,8 @@ import {
   type ScenarioResult,
   type WorkloadPhase,
 } from "./domain/model";
-import { getProfile, HARDWARE_PROFILES, type ArchitectureProfile } from "./data/profiles";
-import { DataFlowAnimator, type MotionStatus } from "./visuals/data-flow";
+import { HARDWARE_PROFILES, type ArchitectureProfile } from "./data/profiles";
+import { renderSiliconMap, type SiliconMapTargets } from "./visuals/silicon-map";
 import { formatNumber, renderRoofline } from "./visuals/roofline";
 
 interface AppState {
@@ -16,7 +16,6 @@ interface AppState {
   computeCeilingTFLOPS: number;
   hostRamGB: number;
   selectedProfileIds: Set<string>;
-  flowProfileId: string | null;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {
@@ -34,10 +33,11 @@ const state: AppState = {
   computeCeilingTFLOPS: 1_000,
   hostRamGB: 128,
   selectedProfileIds: new Set(HARDWARE_PROFILES.map((profile) => profile.id)),
-  flowProfileId: null,
 };
 
-const profileGrid = getElement<HTMLDivElement>("profile-grid");
+const siliconWorkbench = getElement<HTMLElement>("silicon-workbench");
+const siliconLanes = getElement<HTMLDivElement>("silicon-lanes");
+const phaseControl = getElement<HTMLFieldSetElement>("phase-control");
 const scenarioForm = getElement<HTMLFormElement>("scenario-form");
 const modelSizeInput = getElement<HTMLInputElement>("model-size");
 const weightBitsInput = getElement<HTMLSelectElement>("weight-bits");
@@ -45,34 +45,61 @@ const batchInput = getElement<HTMLInputElement>("batch-size");
 const contextInput = getElement<HTMLInputElement>("context-size");
 const computeInput = getElement<HTMLInputElement>("compute-ceiling");
 const hostRamInput = getElement<HTMLInputElement>("host-ram");
-const flowProfileSelect = getElement<HTMLSelectElement>("flow-profile-select");
 const chartContainer = getElement<HTMLDivElement>("roofline-chart");
 const chartLegend = getElement<HTMLDivElement>("chart-legend");
 const resultsTableBody = getElement<HTMLTableSectionElement>("results-table-body");
+const chartSummary = getElement<HTMLParagraphElement>("chart-summary");
 const motionToggle = getElement<HTMLButtonElement>("motion-toggle");
 const motionToggleLabel = getElement<HTMLSpanElement>("motion-toggle-label");
 const motionIcon = motionToggle.querySelector<HTMLSpanElement>(".motion-icon");
-const chartSummary = getElement<HTMLParagraphElement>("chart-summary");
 
 if (!motionIcon) throw new Error("Motion control icon not found.");
 
-const animator = new DataFlowAnimator(getElement<HTMLCanvasElement>("flow-canvas"), updateMotionControl);
+const siliconMapTargets: SiliconMapTargets = {
+  lanes: siliconLanes,
+  weightVolume: getElement<HTMLElement>("map-weight-volume"),
+  matrixWork: getElement<HTMLElement>("map-matrix-work"),
+  intensity: getElement<HTMLElement>("map-intensity"),
+  phaseNote: getElement<HTMLElement>("phase-note"),
+  insightTitle: getElement<HTMLElement>("insight-title"),
+  insightCopy: getElement<HTMLElement>("insight-copy"),
+  referenceRate: getElement<HTMLElement>("reference-rate"),
+};
 
-renderProfileCards();
-renderFlowOptions();
-updateAnimatorScenario();
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+let userPausedMotion = false;
+let mapInViewport = false;
+let mapObserver: IntersectionObserver | null = null;
+
+if ("IntersectionObserver" in window) {
+  mapObserver = new IntersectionObserver(
+    (entries) => {
+      mapInViewport = entries.some((entry) => entry.target === siliconWorkbench && entry.isIntersecting);
+      updateMotionControl();
+    },
+    { rootMargin: "-100px 0px -100px 0px" },
+  );
+  mapObserver.observe(siliconWorkbench);
+} else {
+  mapInViewport = true;
+}
+
 render();
+updateMotionControl();
 
 scenarioForm.addEventListener("submit", (event) => event.preventDefault());
 scenarioForm.addEventListener("input", updateFromControls);
 scenarioForm.addEventListener("change", updateFromControls);
-profileGrid.addEventListener("click", toggleProfile);
+phaseControl.addEventListener("change", updateFromControls);
+siliconLanes.addEventListener("click", toggleProfile);
 getElement<HTMLButtonElement>("select-all-profiles").addEventListener("click", selectAllProfiles);
 getElement<HTMLButtonElement>("clear-profiles").addEventListener("click", clearProfiles);
 getElement<HTMLButtonElement>("empty-select-all").addEventListener("click", selectAllProfiles);
 getElement<HTMLButtonElement>("reset-scenario").addEventListener("click", resetScenario);
-flowProfileSelect.addEventListener("change", updateFlowFocus);
-motionToggle.addEventListener("click", animator.toggle);
+motionToggle.addEventListener("click", toggleMotion);
+document.addEventListener("visibilitychange", updateMotionControl);
+motionPreference.addEventListener("change", updateMotionControl);
+window.addEventListener("pagehide", () => mapObserver?.disconnect(), { once: true });
 
 function readInputs(): void {
   const selectedPhase = document.querySelector<HTMLInputElement>('input[name="phase"]:checked');
@@ -90,7 +117,6 @@ function readInputs(): void {
 
 function updateFromControls(): void {
   readInputs();
-  updateAnimatorScenario();
   render();
 }
 
@@ -99,43 +125,36 @@ function toggleProfile(event: MouseEvent): void {
   if (!(target instanceof Element)) return;
   const button = target.closest<HTMLButtonElement>("button[data-profile-id]");
   const profileId = button?.dataset.profileId;
-  const profile = profileId ? getProfile(profileId) : undefined;
+  const profile = profileId ? HARDWARE_PROFILES.find((item) => item.id === profileId) : undefined;
   if (!profileId || !profile) return;
 
-  const wasIncluded = state.selectedProfileIds.has(profileId);
-  if (wasIncluded) {
+  if (state.selectedProfileIds.has(profileId)) {
     state.selectedProfileIds.delete(profileId);
-    if (state.flowProfileId === profileId) state.flowProfileId = null;
   } else {
     state.selectedProfileIds.add(profileId);
   }
 
-  updateAnimatorScenario();
   render();
-  getElement<HTMLParagraphElement>("selection-status").textContent =
-    `${profile.name} ${wasIncluded ? "removed from" : "added to"} the comparison. ` +
-    `${state.selectedProfileIds.size} of ${HARDWARE_PROFILES.length} profiles included.`;
+  siliconLanes.querySelector<HTMLButtonElement>(`button[data-profile-id="${CSS.escape(profileId)}"]`)?.focus({
+    preventScroll: true,
+  });
 }
 
 function selectAllProfiles(): void {
   state.selectedProfileIds = new Set(HARDWARE_PROFILES.map((profile) => profile.id));
-  updateAnimatorScenario();
   render();
-  getElement<HTMLParagraphElement>("selection-status").textContent =
-    "All eight profiles are included in this comparison.";
 }
 
 function clearProfiles(): void {
   state.selectedProfileIds.clear();
-  state.flowProfileId = null;
-  updateAnimatorScenario();
   render();
-  getElement<HTMLParagraphElement>("selection-status").textContent =
-    "Comparison cleared. Select one or more profiles to continue.";
 }
 
 function resetScenario(): void {
   scenarioForm.reset();
+  const decodeRadio = phaseControl.querySelector<HTMLInputElement>('input[name="phase"][value="decode"]');
+  if (decodeRadio) decodeRadio.checked = true;
+
   state.phase = "decode";
   state.modelParamsBillion = 7;
   state.weightBits = 4;
@@ -144,31 +163,30 @@ function resetScenario(): void {
   state.computeCeilingTFLOPS = 1_000;
   state.hostRamGB = 128;
   state.selectedProfileIds = new Set(HARDWARE_PROFILES.map((profile) => profile.id));
-  state.flowProfileId = null;
-  updateAnimatorScenario();
-  render();
-  getElement<HTMLParagraphElement>("selection-status").textContent =
-    "Scenario reset. All eight profiles are included.";
-}
-
-function updateFlowFocus(): void {
-  state.flowProfileId = flowProfileSelect.value || null;
-  updateAnimatorScenario();
   render();
 }
 
 function render(): void {
+  readInputs();
+  const allResults = new Map(
+    HARDWARE_PROFILES.map((profile) => [profile.id, calculateScenario(state, profile)] as const),
+  );
   const selectedProfiles = HARDWARE_PROFILES.filter((profile) => state.selectedProfileIds.has(profile.id));
   const results = new Map(
-    selectedProfiles.map((profile) => [profile.id, calculateScenario(state, profile)] as const),
+    selectedProfiles.map((profile) => [profile.id, allResults.get(profile.id)!] as const),
   );
-  const tokensPerStep = state.phase === "decode" ? 1 : state.contextTokens;
-  const arithmeticIntensity = (16 * state.batch * tokensPerStep) / state.weightBits;
+  const firstProfileId = HARDWARE_PROFILES[0]?.id ?? "";
+  const arithmeticIntensity = allResults.get(firstProfileId)?.intensityFLOPPerByte ?? 0;
 
-  renderProfileSelection();
-  renderFlowOptions();
   renderControls(selectedProfiles.some((profile) => profile.capacityMode === "host"));
   renderComparison(selectedProfiles, results);
+  renderSiliconMap(
+    siliconMapTargets,
+    HARDWARE_PROFILES,
+    allResults,
+    state.selectedProfileIds,
+    state,
+  );
   getElement<HTMLElement>("intensity-value").textContent = formatNumber(arithmeticIntensity, 1);
 
   const memoryRoofs = Array.from(results.values())
@@ -190,84 +208,12 @@ function render(): void {
     { chart: chartContainer, legend: chartLegend, tableBody: resultsTableBody },
     selectedProfiles,
     results,
-    state.flowProfileId,
+    null,
     state,
   );
-  renderFlowProfile();
   chartSummary.textContent = selectedProfiles.length
-    ? `${selectedProfiles.length} profiles share this ${state.phase} workload at ${formatNumber(arithmeticIntensity, 1)} FLOP/byte. The compute ceiling is normalized across profiles.`
-    : "No profiles selected. Use Select all to restore the Roofline comparison.";
-}
-
-function renderProfileCards(): void {
-  const fragment = document.createDocumentFragment();
-  for (const profile of HARDWARE_PROFILES) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "profile-card";
-    button.dataset.profileId = profile.id;
-    button.style.setProperty("--profile-color", profile.color);
-
-    const indicator = document.createElement("span");
-    indicator.className = "profile-check";
-    indicator.setAttribute("aria-hidden", "true");
-    indicator.textContent = "✓";
-
-    const copy = document.createElement("span");
-    copy.className = "profile-card-copy";
-    const vendor = document.createElement("span");
-    vendor.className = "profile-vendor";
-    vendor.textContent = profile.vendor;
-    const name = document.createElement("span");
-    name.className = "profile-name";
-    name.textContent = profile.name;
-    const architecture = document.createElement("span");
-    architecture.className = "profile-arch";
-    architecture.textContent = profile.architecture;
-    const bandwidth = document.createElement("span");
-    bandwidth.className = "profile-bandwidth";
-    bandwidth.textContent = profile.bandwidthLabel;
-
-    copy.append(vendor, name, architecture, bandwidth);
-    button.append(indicator, copy);
-    fragment.append(button);
-  }
-  profileGrid.replaceChildren(fragment);
-}
-
-function renderProfileSelection(): void {
-  for (const button of profileGrid.querySelectorAll<HTMLButtonElement>("button[data-profile-id]")) {
-    const profileId = button.dataset.profileId;
-    const profile = profileId ? getProfile(profileId) : undefined;
-    if (!profileId || !profile) continue;
-
-    const included = state.selectedProfileIds.has(profileId);
-    button.setAttribute("aria-pressed", String(included));
-    button.setAttribute(
-      "aria-label",
-      `${profile.name}, ${profile.vendor}. ${included ? "Included" : "Not included"}. ${profile.bandwidthLabel}. Toggle comparison inclusion.`,
-    );
-  }
-}
-
-function renderFlowOptions(): void {
-  const currentValue = state.flowProfileId ?? "";
-  const fragment = document.createDocumentFragment();
-  const empty = document.createElement("option");
-  empty.value = "";
-  empty.textContent = "No focus · equal comparison";
-  fragment.append(empty);
-
-  for (const profile of HARDWARE_PROFILES) {
-    if (!state.selectedProfileIds.has(profile.id)) continue;
-    const option = document.createElement("option");
-    option.value = profile.id;
-    option.textContent = `${profile.name} · ${profile.vendor}`;
-    fragment.append(option);
-  }
-
-  flowProfileSelect.replaceChildren(fragment);
-  flowProfileSelect.value = currentValue;
+    ? `${selectedProfiles.length} chip paths share this ${state.phase} workload at ${formatNumber(arithmeticIntensity, 1)} FLOP/byte. The technical view uses one normalized reference compute ceiling, not chip-specific compute peaks.`
+    : "No chip paths included. Use Select all in the shared map to restore the comparison.";
 }
 
 function renderControls(hasHostProfile: boolean): void {
@@ -310,7 +256,6 @@ function renderComparison(
   const comparisonCaption = getElement<HTMLParagraphElement>("comparison-caption");
   const comparisonEmpty = getElement<HTMLDivElement>("comparison-empty");
   const resultsTable = getElement<HTMLTableElement>("comparison-table");
-
   const count = selectedProfiles.length;
   const memoryCount = Array.from(results.values()).filter((result) => result.bottleneck === "memory").length;
   const computeCount = Array.from(results.values()).filter((result) => result.bottleneck === "compute").length;
@@ -323,15 +268,15 @@ function renderComparison(
   selectedCountKpi.textContent = `${count} / ${HARDWARE_PROFILES.length}`;
   comparisonTotal.textContent = `${count} / ${HARDWARE_PROFILES.length}`;
   comparisonCaption.textContent = count
-    ? "Every included profile is calculated from the same workload inputs."
-    : "Select one or more profiles to calculate a comparison.";
+    ? "Every included chip path receives the same workload. Toggle lanes in the shared map."
+    : "Select one or more chip lanes in the shared map to calculate a comparison.";
   comparisonEmpty.hidden = count !== 0;
   resultsTable.hidden = count === 0;
 
   const bottleneckParts = [
-    memoryCount ? `${memoryCount} memory-bound` : "",
-    computeCount ? `${computeCount} compute-bound` : "",
-    balancedCount ? `${balancedCount} balanced` : "",
+    memoryCount ? `${memoryCount} data-feed limited` : "",
+    computeCount ? `${computeCount} matrix-work limited` : "",
+    balancedCount ? `${balancedCount} near balance` : "",
     unknownCount ? `${unknownCount} unknown` : "",
   ].filter(Boolean);
   bottleneckSummary.textContent = bottleneckParts.length ? bottleneckParts.join(" · ") : "No profiles";
@@ -349,61 +294,30 @@ function renderComparison(
 
   getElement<HTMLParagraphElement>("selection-status").textContent =
     count === HARDWARE_PROFILES.length
-      ? "All eight profiles are included in this comparison."
+      ? "All eight chip lanes are active in this shared workload."
       : count === 0
-        ? "No profiles are included. Select all to restore the comparison."
-        : `${count} of ${HARDWARE_PROFILES.length} profiles included. Every included profile uses the same inputs.`;
+        ? "No chip lanes are active. Use Select all to restore the comparison."
+        : `${count} of ${HARDWARE_PROFILES.length} chip lanes are active. Each included lane uses the same workload.`;
 }
 
-function renderFlowProfile(): void {
-  const profile = state.flowProfileId ? getProfile(state.flowProfileId) : undefined;
-  const vendor = getElement<HTMLElement>("flow-vendor");
-  const memory = getElement<HTMLElement>("flow-memory");
-  const memoryType = getElement<HTMLElement>("flow-memory-type");
-  const compute = getElement<HTMLElement>("flow-compute");
-  const computeType = getElement<HTMLElement>("flow-compute-type");
-  const note = getElement<HTMLParagraphElement>("flow-note");
-  const source = getElement<HTMLAnchorElement>("active-source");
-
-  if (!profile) {
-    vendor.textContent = "NO PROFILE FOCUSED";
-    memory.textContent = "Select a profile to inspect its data path";
-    memoryType.textContent = "The multi-chip comparison stays visible";
-    compute.textContent = "Choose an optional focus";
-    computeType.textContent = "No comparison curves are removed";
-    note.textContent = "Use the selector. Focus never replaces the comparison.";
-    source.href = "https://www2.eecs.berkeley.edu/Pubs/TechRpts/2008/Archive/EECS-2008-134.pdf";
-    getElement<HTMLElement>("active-source-label").textContent = "Roofline model source";
-    getElement<HTMLDivElement>("flow-board").setAttribute("aria-label", "No data path focused");
-    getElement<HTMLDivElement>("flow-board").style.setProperty("--profile-color", "#6be5f0");
-    return;
-  }
-
-  vendor.textContent = profile.vendor;
-  memory.textContent = profile.memoryNode;
-  memoryType.textContent = profile.memoryType;
-  compute.textContent = profile.computeNode;
-  computeType.textContent = profile.architecture;
-  note.textContent = profile.flowNote;
-  source.href = profile.sourceUrl;
-  getElement<HTMLElement>("active-source-label").textContent = `Source: ${profile.sourceLabel}`;
-  getElement<HTMLDivElement>("flow-board").setAttribute("aria-label", `Data path for ${profile.name}`);
-  getElement<HTMLDivElement>("flow-board").style.setProperty("--profile-color", profile.color);
+function toggleMotion(): void {
+  if (motionPreference.matches) return;
+  userPausedMotion = !userPausedMotion;
+  updateMotionControl();
 }
 
-function updateAnimatorScenario(): void {
-  const profile = state.flowProfileId ? getProfile(state.flowProfileId) : undefined;
-  const tokensPerStep = state.phase === "decode" ? 1 : state.contextTokens;
-  const intensity = (16 * state.batch * tokensPerStep) / state.weightBits;
-  animator.setScenario(intensity, profile?.color ?? "#6be5f0");
-}
-
-function updateMotionControl(status: MotionStatus): void {
-  motionToggle.setAttribute("aria-pressed", String(status.playing));
-  motionToggleLabel.textContent = status.reducedMotion
-    ? "Reduced motion active"
-    : status.playing
-      ? "Pause animation"
-      : "Resume animation";
-  if (motionIcon) motionIcon.textContent = status.playing ? "Ⅱ" : "▶";
+function updateMotionControl(): void {
+  const playing =
+    !userPausedMotion &&
+    !motionPreference.matches &&
+    document.visibilityState === "visible" &&
+    mapInViewport;
+  siliconWorkbench.classList.toggle("is-paused", !playing);
+  motionToggle.setAttribute("aria-pressed", String(playing));
+  motionToggleLabel.textContent = motionPreference.matches
+    ? "Reduced motion is on"
+    : playing
+      ? "Pause data flow"
+      : "Resume data flow";
+  if (motionIcon) motionIcon.textContent = playing ? "Ⅱ" : "▶";
 }

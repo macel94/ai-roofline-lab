@@ -7,9 +7,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta
       name="description"
-      content="Compare eight AI hardware architectures in one live Roofline simulation. Static, source-aware, and free of accounts or API calls."
+      content="See why AI workloads wait for memory or matrix compute in a shared interactive 2D map of eight hardware data paths. Static, sourced, and free of accounts or API calls."
     />
-    <title>AI Silicon / Roofline Lab — Eight chips. One workload.</title>
+    <title>AI Silicon / Roofline Lab — Follow the weights.</title>
     <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/main.ts"></script>
   </head>
@@ -42,56 +42,111 @@
       <main id="top">
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-copy">
-            <p class="eyebrow"><span class="eyebrow-line"></span> AI HARDWARE · ROOFLINE EXPLORER</p>
-            <h1 id="hero-title">Where AI hits <em>the wall.</em></h1>
-            <p class="hero-intro">One workload. Eight hardware paths. Change the inputs and watch the bottleneck move.</p>
+            <p class="eyebrow"><span class="eyebrow-line"></span> AI HARDWARE · FOLLOW THE WEIGHTS</p>
+            <h1 id="hero-title">Why does AI <em>wait?</em></h1>
+            <p class="hero-intro">See where model weights live, how they reach the matrix engine, and which stage becomes the bottleneck.</p>
           </div>
-          <div class="hero-signal" aria-label="The simulator compares compute ceilings and memory bandwidth">
-            <div class="hero-signal-copy">
-              <span>LIVE COMPARISON</span>
-              <strong>8 / 8 <small>architectures</small></strong>
-            </div>
-            <svg viewBox="0 0 360 104" role="img" aria-labelledby="hero-chart-title hero-chart-desc">
-              <title id="hero-chart-title">Illustrative memory and compute ceilings</title>
-              <desc id="hero-chart-desc">Several colored Roofline curves meet at different ridge points.</desc>
-              <path d="M10 91H350M10 65H350M10 39H350M10 13H350" stroke="#233044" stroke-width="1" />
-              <path d="M12 92 85 71h253M12 87 111 56h227M12 78 149 39h189M12 68 192 24h146" fill="none" stroke="#73819a" stroke-opacity=".52" stroke-width="1.5" />
-              <path d="M12 88 102 62h236" fill="none" stroke="#c8f36a" stroke-width="2" />
-              <circle cx="102" cy="62" r="4" fill="#c8f36a" />
-              <circle cx="149" cy="39" r="3" fill="#6be5f0" />
-              <circle cx="192" cy="24" r="3" fill="#ff7898" />
-            </svg>
-            <span class="hero-signal-foot">BANDWIDTH × ARITHMETIC INTENSITY</span>
+          <div class="hero-signal" role="img" aria-label="Model weights move from memory through a data path into a matrix engine">
+            <div class="hero-path-node"><span>01 · STORAGE</span><strong>WEIGHTS</strong><small>memory</small></div>
+            <div class="hero-path-link" aria-hidden="true"><i></i><i></i><i></i><span>DATA FEED →</span></div>
+            <div class="hero-path-node hero-engine-node"><span>02 · WORK</span><strong>MATRIX</strong><small>engine</small></div>
           </div>
         </section>
 
         <section class="simulator" id="simulator" aria-labelledby="simulator-title">
           <div class="simulator-heading">
             <div>
-              <p class="eyebrow"><span class="eyebrow-line"></span> INTERACTIVE ROOFLINE · 01</p>
-              <h2 id="simulator-title">Eight chips. <em>Same workload.</em></h2>
+              <p class="eyebrow"><span class="eyebrow-line"></span> SHARED SILICON SPACE · 01</p>
+              <h2 id="simulator-title">Eight paths. <em>One workload.</em></h2>
             </div>
             <div class="simulator-heading-actions">
-              <span class="live-pill"><span class="status-dot" aria-hidden="true"></span> LIVE · LOCAL CALCULATION</span>
+              <span class="live-pill"><span class="status-dot" aria-hidden="true"></span> LIVE · LOCAL MODEL</span>
               <button class="reset-button" id="reset-scenario" type="button">Reset scenario <span aria-hidden="true">↺</span></button>
             </div>
           </div>
 
-          <form class="scenario-bar" id="scenario-form" aria-label="Shared workload inputs">
-            <fieldset class="phase-control">
-              <legend>Inference phase</legend>
-              <div class="phase-options">
-                <label class="phase-option">
-                  <input type="radio" name="phase" value="decode" checked />
-                  <span><b>01</b> Decode<small>one token per step</small></span>
-                </label>
-                <label class="phase-option">
-                  <input type="radio" name="phase" value="prefill" />
-                  <span><b>02</b> Prefill<small>process the prompt</small></span>
-                </label>
+          <section class="silicon-workbench" id="silicon-workbench" aria-labelledby="workbench-title">
+            <div class="workbench-heading">
+              <div class="workbench-title-copy">
+                <span class="section-kicker">A SHARED 2D DATA-PATH MAP · CHIP ROWS × SILICON STAGES</span>
+                <h3 id="workbench-title">Follow the weights to the matrix engine</h3>
+                <p>Each row traces one chip’s memory → data link → compute engine. The brighter end is the stage this simplified workload waits on.</p>
               </div>
-            </fieldset>
+              <div class="workbench-actions">
+                <span class="selected-count-pill" id="selected-count" aria-live="polite">8 of 8 included</span>
+                <button id="select-all-profiles" type="button">Select all</button>
+                <button id="clear-profiles" type="button">Clear all</button>
+                <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true">
+                  <span class="motion-icon" aria-hidden="true">Ⅱ</span>
+                  <span id="motion-toggle-label">Pause data flow</span>
+                </button>
+              </div>
+            </div>
 
+            <div class="workbench-control-row">
+              <fieldset class="phase-control" id="phase-control">
+                <legend>Change the kind of work</legend>
+                <div class="phase-options">
+                  <label class="phase-option">
+                    <input type="radio" name="phase" value="decode" checked />
+                    <span><b>01</b> Decode<small>make the next token</small></span>
+                  </label>
+                  <label class="phase-option">
+                    <input type="radio" name="phase" value="prefill" />
+                    <span><b>02</b> Prefill<small>process prompt tokens</small></span>
+                  </label>
+                </div>
+              </fieldset>
+              <div class="reference-rate-callout">
+                <span>SHARED TEACHING RATE · NOT A CHIP SPEC</span>
+                <strong id="reference-rate">1,000 TFLOP/s</strong>
+                <small>Used only to illustrate matrix-work time.</small>
+              </div>
+            </div>
+
+            <div class="workload-equation" aria-label="Workload memory traffic, matrix work, and arithmetic intensity">
+              <div class="workload-quantity">
+                <span>WEIGHT BYTES TO FEED</span>
+                <strong id="map-weight-volume">3.5 GB</strong>
+                <small>one ideal weight stream per step</small>
+              </div>
+              <span class="workload-arrow" aria-hidden="true">→</span>
+              <div class="workload-quantity workload-operations">
+                <span>MATRIX MULTIPLY WORK</span>
+                <strong id="map-matrix-work">14 GFLOP</strong>
+                <small>operations for this step</small>
+              </div>
+              <div class="workload-quantity workload-intensity">
+                <span>WORK PER BYTE</span>
+                <strong id="map-intensity">4 FLOP/byte</strong>
+                <small id="phase-note">Decode does little work per weight read.</small>
+              </div>
+            </div>
+
+            <div class="workload-insight" id="workload-insight" aria-labelledby="insight-title">
+              <span class="insight-spark" aria-hidden="true">✳</span>
+              <div>
+                <span class="section-kicker">THE “WHY” · BOTTLENECK CHANGES WITH THE WORKLOAD</span>
+                <h4 id="insight-title" aria-live="polite">Decode is a memory-feed problem</h4>
+                <p id="insight-copy">Model weights travel from memory into matrix engines. Compare the ideal feed time with the shared reference matrix-work time below.</p>
+              </div>
+            </div>
+
+            <div class="lane-axis" aria-hidden="true">
+              <span>CHIP · TOGGLE INCLUSION</span>
+              <div class="lane-path-axis">
+                <span>01 · WHERE WEIGHTS LIVE</span>
+                <span>WEIGHTS MOVE RIGHT →</span>
+                <span>02 · MATRIX ENGINE</span>
+              </div>
+              <span>WHICH STAGE WAITS?</span>
+            </div>
+            <div class="silicon-lanes" id="silicon-lanes" aria-label="Eight chip data paths, compared in the same physical stages"></div>
+            <p class="selection-status" id="selection-status" aria-live="polite">All eight profiles are included in this comparison.</p>
+            <p class="workbench-caveat">Shared matrix time is a teaching estimate, not a chip spec or measured latency. Per-chip compute facts keep their own precision/scope and are not ranked together; Q4 weight storage does not imply FP4 math. Stream time uses peak/theoretical bandwidth (Groq is a manufacturer claim). Animation is a log-scaled cue, not packet timing.</p>
+          </section>
+
+          <form class="scenario-bar" id="scenario-form" aria-label="Shared workload inputs">
             <div class="control-block model-control">
               <div class="control-label-row">
                 <label for="model-size">Model size</label>
@@ -157,25 +212,9 @@
             </div>
           </form>
 
-          <section class="profile-selector" aria-labelledby="profile-selector-title">
-            <div class="selector-heading">
-              <div>
-                <span class="section-kicker">COMPARE HARDWARE</span>
-                <h3 id="profile-selector-title">Choose the paths to include</h3>
-              </div>
-              <div class="selector-actions">
-                <span class="selected-count-pill" id="selected-count" aria-live="polite">8 of 8 included</span>
-                <button id="select-all-profiles" type="button">Select all</button>
-                <button id="clear-profiles" type="button">Clear all</button>
-              </div>
-            </div>
-            <div class="profile-grid" id="profile-grid" aria-label="Hardware profiles included in the comparison">
-              <noscript><p>Enable JavaScript to run the local comparison.</p></noscript>
-            </div>
-            <p class="selection-status" id="selection-status" aria-live="polite">All eight profiles are included in this comparison.</p>
-          </section>
-
-          <div class="workspace-grid">
+          <details class="technical-details" id="technical-details">
+            <summary><span class="section-kicker">OPTIONAL TECHNICAL LENS</span><strong>Open the Roofline chart and numeric table</strong><span aria-hidden="true">＋</span></summary>
+            <div class="workspace-grid">
             <section class="chart-panel" aria-labelledby="chart-heading">
               <div class="chart-panel-head">
                 <div>
@@ -219,7 +258,7 @@
               </figure>
 
               <div class="legend-wrap">
-                <div class="legend-heading"><span>INCLUDED PROFILES</span><span>Toggle a chip above to add/remove its curve</span></div>
+                <div class="legend-heading"><span>INCLUDED PROFILES</span><span>Toggle a lane in the shared map to add/remove its curve</span></div>
                 <div class="chart-legend" id="chart-legend" aria-label="Roofline series legend"></div>
               </div>
               <p class="normalization-note">
@@ -260,48 +299,6 @@
               <p class="comparison-note">* Working set = weights + a generic 20% reserve. KV cache and workspace are not modeled.</p>
             </aside>
           </div>
-
-          <details class="flow-details" id="flow-details">
-            <summary>
-              <span><span class="section-kicker">OPTIONAL INSPECTOR · <span id="flow-vendor">NO PROFILE FOCUSED</span></span><strong>Inspect one data path</strong></span>
-              <span class="flow-summary-copy">Focus is separate from comparison selection.</span>
-              <span class="details-chevron" aria-hidden="true">＋</span>
-            </summary>
-            <div class="flow-content">
-              <div class="flow-focus-row">
-                <label for="flow-profile-select">Data-path focus</label>
-                <select id="flow-profile-select" name="flow-profile">
-                  <option value="">No focus · equal comparison</option>
-                </select>
-                <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true">
-                  <span class="motion-icon" aria-hidden="true">Ⅱ</span>
-                  <span id="motion-toggle-label">Pause animation</span>
-                </button>
-              </div>
-              <div class="flow-board" id="flow-board">
-                <div class="flow-node memory-node">
-                  <span>01 · MEMORY LEVEL</span>
-                  <strong id="flow-memory">Select a profile to inspect its data path</strong>
-                  <small id="flow-memory-type">The comparison remains visible</small>
-                </div>
-                <div class="flow-track" aria-hidden="true">
-                  <span class="flow-track-label">DATA IN MOTION</span>
-                  <canvas id="flow-canvas" class="flow-canvas"></canvas>
-                  <span class="flow-track-arrow">›</span>
-                </div>
-                <div class="flow-node compute-node">
-                  <span>02 · COMPUTE ENGINE</span>
-                  <strong id="flow-compute">Choose an optional focus</strong>
-                  <small id="flow-compute-type">No comparison curves are removed</small>
-                </div>
-              </div>
-              <div class="flow-foot">
-                <p id="flow-note">Focus is available for included profiles; the comparison selection remains intact.</p>
-                <a id="active-source" href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2008/Archive/EECS-2008-134.pdf" target="_blank" rel="noreferrer">
-                  <span id="active-source-label">Roofline model source</span><span aria-hidden="true">↗</span>
-                </a>
-              </div>
-            </div>
           </details>
         </section>
 

@@ -29,6 +29,8 @@ export interface ScenarioResult {
   readonly tokensPerStep: number;
   readonly operationsGFLOP: number;
   readonly intensityFLOPPerByte: number;
+  readonly weightStreamTimeMs: number | null;
+  readonly referenceMatrixTimeMs: number;
   readonly memoryCeilingTFLOPS: number | null;
   readonly computeCeilingTFLOPS: number;
   readonly attainableTFLOPS: number | null;
@@ -108,7 +110,12 @@ export function calculateScenario(
     profile.bandwidthGBs === null
       ? null
       : (profile.bandwidthGBs * intensityFLOPPerByte) / 1000;
+  const weightStreamTimeMs =
+    profile.bandwidthGBs === null
+      ? null
+      : (weightFootprintGB / profile.bandwidthGBs) * 1000;
   const computeCeilingTFLOPS = input.computeCeilingTFLOPS;
+  const referenceMatrixTimeMs = operationsGFLOP / computeCeilingTFLOPS;
   const attainableTFLOPS =
     memoryCeilingTFLOPS === null
       ? null
@@ -128,6 +135,8 @@ export function calculateScenario(
     tokensPerStep,
     operationsGFLOP,
     intensityFLOPPerByte,
+    weightStreamTimeMs,
+    referenceMatrixTimeMs,
     memoryCeilingTFLOPS,
     computeCeilingTFLOPS,
     attainableTFLOPS,

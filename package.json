@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Interactive static TypeScript Roofline lab for AI hardware architectures.",
+  "description": "Interactive static TypeScript silicon data-path and Roofline lab for AI hardware.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",

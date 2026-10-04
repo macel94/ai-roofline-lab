@@ -1,17 +1,17 @@
 # Product Specification — AI Silicon / Roofline Lab
 
-- **Version:** 0.2 — English simulator-first refresh
+- **Version:** 0.3 — shared physical data-path map
 - **Date:** October 4, 2026
-- **Status:** Refresh specification frozen before implementation changes
+- **Status:** Updated to match the physical-map implementation; local E2E suite passes
 - **Product language:** English (United States)
 
 ## 1. Product vision
 
-AI inference performance is not determined by peak compute alone. Memory hierarchy, data reuse, bandwidth, numeric precision, and workload phase can move a workload between memory-bound and compute-bound regimes.
+AI inference performance depends on more than a chip’s headline compute peak. Model weights must move from a memory tier into CPU, GPU, or accelerator compute blocks; data reuse and matrix work determine which stage waits.
 
-**AI Silicon / Roofline Lab** is a static, interactive comparison tool for exploring those trade-offs across Apple silicon, x86 CPUs, NVIDIA GPUs, Google TPUs, and Groq LPUs. The simulator uses a transparent educational Roofline model; it does not execute an LLM and does not claim to predict measured hardware performance.
+**AI Silicon / Roofline Lab** is a static, interactive learning tool across Apple silicon, x86 CPUs, NVIDIA GPUs, Google TPUs, and Groq LPUs. Its primary surface is one shared 2D map: chip architectures form rows and the physical stages—memory, data feed, matrix engine—form columns. The same workload is traced through all included paths. Visitors see weight bytes, matrix operations, idealized stream time, a shared reference matrix time, and a plain-language explanation of the limiting stage.
 
-The product’s primary action is **compare multiple architectures in one simulation**. A single-profile data-path inspection is optional and must never replace or narrow the comparison set.
+The product’s primary action is **compare multiple architectures in one simulation**, then switch Decode and Prefill to see reuse change the wait. The transparent model does not execute an LLM, benchmark hardware, or claim to predict measured performance.
 
 ## 2. Target users
 
@@ -29,10 +29,11 @@ The product’s primary action is **compare multiple architectures in one simula
 - All eight profiles included in the initial comparison.
 - Independent include/exclude controls, “Select all,” “Clear all,” and reset-to-default.
 - Workload controls for decode/prefill, model size, weight bits, batch, prompt length, a shared normalized compute ceiling, and configurable host RAM for x86 profiles.
-- Roofline chart, always-visible per-profile comparison results, and accessible table semantics.
-- Optional focused data-path view, independent of which profiles are included in the comparison.
-- Source, unit, scope, and evidence labels for hardware figures.
-- Lightweight data-flow animation with pause, reduced-motion, hidden-tab, and offscreen suspension.
+- A shared 2D memory-to-engine map with eight aligned chip lanes; lane controls include/exclude profiles without hiding the other architecture paths.
+- A workload receipt (weight GB, matrix GFLOP, FLOP/byte), idealized per-lane weight-stream time, shared reference matrix time, and a plain-language live bottleneck explanation.
+- Per-chip memory level, bandwidth/capacity evidence, compute-engine type, sourced precision/scope-specific compute facts, fit state, and source link.
+- An optional technical disclosure with the Roofline chart, accessible comparison table, and formulas.
+- Lightweight CSS transform motion with pause, reduced-motion, hidden-tab, and offscreen suspension.
 - Free deployment to GitHub Pages from a new public repository.
 
 ### Out of scope
@@ -47,10 +48,10 @@ The product’s primary action is **compare multiple architectures in one simula
 
 | ID | User story | Independent | Negotiable | Valuable | Estimable | Small | Testable |
 |---|---|---|---|---|---|---|---|
-| US-01 | As a visitor, I want the simulator visible immediately so I can try it without reading a long introduction. | Uses the shared initial scenario. | Exact hero copy/layout may change. | Delivers the main value immediately. | One compact first-screen layout. | One entry viewport. | E2E at 1280×800. |
-| US-02 | As a user, I want all eight chips compared together so I can see differences under identical inputs. | Uses a shared calculation input. | Selector presentation may change. | Core product value. | Fixed profile dataset. | One comparison state. | Eight lines and eight results on load. |
+| US-01 | As a visitor, I want to see the memory-to-engine map and a plain-language bottleneck explanation immediately so I can understand the core idea without reading a long introduction. | Uses the shared initial scenario. | Exact visual treatment may change. | Delivers the educational “why” immediately. | One shared map and insight panel. | One entry viewport. | E2E at 1280×800. |
+| US-02 | As a user, I want all eight chips shown in aligned memory→data-feed→matrix-engine lanes so I can compare their physical paths under identical inputs. | Uses a shared calculation input. | Lane styling may change. | Core product value and shared spatial context. | Fixed profile dataset. | One 2D map. | Eight included lanes and per-lane bottleneck state on load. |
 | US-03 | As a user, I want to add/remove profiles independently so I can reduce visual clutter without losing other results. | Per-profile inclusion is independent. | Colors and chip layout are negotiable. | Supports focused analysis. | Boolean inclusion per profile. | Toggle one profile. | Toggle preserves the other seven. |
-| US-04 | As a user, I want to focus a chip’s data path while keeping the comparison visible so I can inspect one architecture without reverting to a single-chip simulation. | Focus is separate from inclusion. | Detail-panel content is extensible. | Explains architecture mechanics. | One optional focused view. | One profile at a time, comparison remains multi-profile. | E2E verifies curves/results stay selected. |
+| US-04 | As a learner, I want to see where weights are stored, how they reach each engine, and what compute facts are published so I can distinguish data movement from matrix throughput. | Every architecture has a labeled lane and source. | The amount of detail is tunable. | Builds a physical mental model without a false leaderboard. | Profile facts are already typed and sourced. | One engine/memory explanation per lane. | E2E checks DDR, UMA, HBM, SRAM, engine labels, and cited compute facts. |
 | US-05 | As an ML engineer, I want to adjust workload phase, model size, precision, batch, and context so I can explore how arithmetic intensity changes. | The model is a pure function. | Presets/ranges may be tuned. | Explains workload-dependent limits. | Inputs and formulas are bounded. | One scenario panel. | Numerical model tests. |
 | US-06 | As a reviewer, I want sources and assumptions beside the results so I can distinguish published facts, derived values, and vendor claims. | Provenance is attached to each profile. | Disclosure layout is negotiable. | Prevents false precision. | Static source metadata. | One provenance panel. | Labels/links are testable. |
 | US-07 | As a keyboard, mobile, or reduced-motion user, I want the complete comparison to remain operable so the experience does not depend on hover, color, or animation. | Uses shared controls and semantics. | Visual details may change. | Inclusive access. | WCAG/responsive constraints. | One accessibility pass. | Playwright + manual checks. |
@@ -73,11 +74,11 @@ The system shall run as a static client-side site without login, application ser
 ### R-03 — Exact eight-profile catalog (Ubiquitous)
 The system shall contain exactly the eight reference profiles named in Section 3, with a source/evidence state for each numeric hardware value.
 
-### R-04 — Default multi-chip comparison (Event-driven)
-When a clean session opens, the system shall include all eight profiles, show the selected count, plot all available Roofline curves, and render one result row/card per included profile.
+### R-04 — Default shared physical map (Event-driven)
+When a clean session opens, the system shall include all eight profiles in one 2D memory-to-matrix map, show the included count, and explain the default workload’s limiting stage.
 
-- **Given** a clean load, **When** the first comparison is rendered, **Then** all eight profiles are selected simultaneously and no profile is focused.
-- **Given** a 1280×800 viewport at 100% zoom, **When** the page is at its top, **Then** the primary inputs, profile inclusion controls, chart, and comparison summary are visible or directly operable without scrolling through an introductory gallery.
+- **Given** a clean load, **When** the initial map is rendered, **Then** eight labeled chip lanes appear in a shared memory→data-feed→matrix-engine space and all eight are included.
+- **Given** a 1280×800 viewport at 100% zoom, **When** the page is at its top, **Then** the workload phase switch, weight/matrix-work receipt, plain-language bottleneck explanation, and start of the physical map appear before the detailed controls or technical chart.
 
 ### R-05 — Independent inclusion (Event-driven)
 When a user toggles a profile’s inclusion control, the system shall add or remove only that profile’s line and comparison result.
@@ -86,21 +87,21 @@ When a user toggles a profile’s inclusion control, the system shall add or rem
 - **Given** fewer than eight selected, **When** “Select all” or reset-to-default is activated, **Then** all eight return.
 - **Given** zero profiles selected, **When** the comparison is rendered, **Then** an explicit empty state and “Select all” action appear; stale results are not shown.
 
-### R-06 — Always-visible results (State-driven)
-While profiles are included, the system shall keep their result summaries visible by default; the user shall not need to open a collapsed table or select one chip to compare them.
+### R-06 — Always-visible physical results (State-driven)
+While profiles are included, the system shall keep each lane’s memory source, transfer rate, compute engine, two modeled stage times, bottleneck, capacity-fit state, and source available in the shared map; the technical table may remain in a disclosure.
 
-Each row shall identify the profile, bandwidth/memory scope, modeled memory roof, bottleneck state, and capacity-fit state.
+The map shall identify memory tiers such as system DDR, unified memory, HBM, and on-chip SRAM, and name the corresponding CPU/accelerator engine. A stage shall be highlighted with a text label as well as color.
 
 ### R-07 — Shared workload inputs (Event-driven)
 When the user changes phase, model parameters, weight bits, batch, prompt tokens, normalized compute ceiling, or host RAM, the system shall recompute all included profiles from the same input state.
 
 Default scenario: 7B parameters, 4-bit weights, batch 1, decode, 512 prompt tokens, shared compute ceiling 1,000 TFLOP/s, host RAM 128 GB.
 
-### R-08 — Optional architecture focus (Optional)
-When a user chooses a profile in “Data path focus,” the system shall emphasize its memory/compute flow without removing, replacing, or hiding any included curve or result.
+### R-08 — Honest compute comparison (Ubiquitous)
+The system shall label the shared adjustable compute rate as an illustrative teaching reference, never as a chip-specific peak. It shall display each available vendor compute fact with its own precision, scope, and evidence, and shall not rank incompatible CPU/GPU/TPU/LPU peaks together.
 
-### R-09 — Roofline calculation (Ubiquitous)
-The system shall compute `P_attainable = min(P_peak, BW × I)` with documented units, show arithmetic intensity and both ceilings, and classify memory-bound, compute-bound, balanced (within ±5%), or unknown.
+### R-09 — Roofline and stage-time calculation (Ubiquitous)
+The system shall compute `P_attainable = min(P_ref, BW × I)`, ideal weight-stream time `T_data_ms = W_GB / BW_GB/s × 1000`, and reference matrix time `T_math_ms = F_GFLOP / P_ref_TFLOP/s`. It shall classify and visibly identify the slower stage; these are model outputs, not measured latency.
 
 ### R-10 — Capacity fit (Unwanted behavior / State-driven)
 If the estimated working set exceeds a known capacity, the system shall label the profile “Does not fit” for that configured profile; if capacity is unknown, it shall show “Unknown” rather than fit or zero.
@@ -114,11 +115,14 @@ If an input is invalid or out of range, the system shall show an actionable inli
 ### R-13 — Accessibility and responsive design (Ubiquitous)
 The system shall support keyboard operation, visible focus, accessible names, non-color series identification, WCAG 2.2 AA contrast, reduced motion, and responsive layouts from 360 px to desktop.
 
-### R-14 — Performance and motion (State-driven)
-While the canvas is playing, its element intersects the viewport, the document is visible, and reduced motion is not requested, the system shall animate at a target of 60 fps with a bounded `requestAnimationFrame` loop and no per-frame DOM/layout updates. It shall suspend when paused, hidden, offscreen, or reduced-motion is enabled.
+### R-14 — Accessible flow motion (State-driven)
+The system shall animate the data-feed cue with CSS transforms, never encode data solely in motion, and explain that animation speed is a log-scaled visual cue rather than literal packet timing. It shall pause on user request, `prefers-reduced-motion`, hidden tab, or when the map is outside the meaningful viewport. Calculations and selection remain functional when motion is paused.
 
-### R-15 — Comparison performance (State-driven)
-While all eight profiles are included, changing an input or selection shall keep the interface responsive; target update time is under 100 ms on the reference desktop, with 60 fps as the animation goal and 55 fps minimum operational tolerance for the local performance check.
+### R-15 — Per-lane teaching times (State-driven)
+While a chip is included, the system shall show idealized memory-stream time from its cited bandwidth and workload weight bytes, plus matrix-work time at the shared reference rate. It shall state that the reference rate is not a chip specification, that weight precision does not define compute precision, and that peak/derived/claimed bandwidth does not predict measured latency.
+
+### R-16 — Comparison responsiveness (State-driven)
+While all eight profiles are included, changing phase, workload input, or selection shall update the map, explanation, and technical comparison without blocking interaction; target update time is under 100 ms on the reference desktop.
 
 ## 6. English terminology and formatting
 
@@ -134,7 +138,8 @@ While all eight profiles are included, changing an input or selection shall keep
 
 - All visible and documentation content is English.
 - All eight profiles are selected by default; inclusion toggles are independent; a zero-selection empty state exists.
-- Comparison results stay visible for every included chip when a data-path profile is focused.
-- The primary lab is usable at 1280×800 without an introductory gallery scroll.
-- Unit tests cover the math and edge cases; E2E covers default multi-select, toggles, focus, English accessibility names, keyboard, mobile, motion, and live sources.
+- The shared 2D map shows all eight physical paths together, with memory, engine, data rate, stage times, and a labeled bottleneck.
+- Decode/Prefill demonstrates weight reuse moving the modeled bottleneck; compute facts remain scoped and non-comparable when precision differs.
+- The “why” story appears at 1280×800 before the detailed form or Roofline chart.
+- Unit tests cover the math and edge cases; E2E covers the map, independent lane toggles, Decode/Prefill, compute facts, keyboard, mobile, reduced motion, offscreen pause, and live sources.
 - The static GitHub Pages site deploys successfully and the live URL returns 200 with working relative assets.

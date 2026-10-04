@@ -72,7 +72,7 @@ export const HARDWARE_PROFILES: readonly ArchitectureProfile[] = [
     summary: "The Pro memory-unified profile has a lower published maximum than M5 Max.",
     memoryNode: "Unified memory",
     computeNode: "GPU · Neural Accelerators",
-    flowNote: "Compute blocks share one memory space; the chart does not assume an Apple compute peak.",
+    flowNote: "GPU compute blocks share a memory pool; Apple publishes relative AI gains, not a common absolute peak for this comparison.",
     sourceUrl:
       "https://www.apple.com/newsroom/2026/03/apple-debuts-m5-pro-and-m5-max-to-supercharge-the-most-demanding-pro-workflows/",
     sourceLabel: "Apple — M5 Pro and M5 Max",
@@ -200,7 +200,7 @@ export const HARDWARE_PROFILES: readonly ArchitectureProfile[] = [
     summary: "One TensorCore with a 256×256 MXU; these are per-chip figures, not Pod totals.",
     memoryNode: "HBM · 32 GB",
     computeNode: "MXU · systolic array",
-    flowNote: "Matrix blocks flow through the array; ICI and multi-chip Pod traffic are outside this chart.",
+    flowNote: "Matrix blocks flow through the systolic array; TPU inter-chip ICI and multi-chip Pod traffic are not modeled in this one-chip lane.",
     sourceUrl: "https://docs.cloud.google.com/tpu/docs/v6e",
     sourceLabel: "Google Cloud — TPU v6e",
     color: "#4fe2c1",

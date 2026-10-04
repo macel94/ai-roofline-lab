@@ -31,6 +31,8 @@ test.describe("Roofline domain model", () => {
     expect(result.estimatedWorkingSetGB).toBe(4.2);
     expect(result.intensityFLOPPerByte).toBe(4);
     expect(result.memoryCeilingTFLOPS).toBeCloseTo(2.456, 10);
+    expect(result.weightStreamTimeMs).toBeCloseTo((3.5 / 614) * 1000, 10);
+    expect(result.referenceMatrixTimeMs).toBeCloseTo(0.014, 10);
     expect(result.attainableTFLOPS).toBeCloseTo(2.456, 10);
     expect(result.fit).toBe("fits");
     expect(result.bottleneck).toBe("memory");
@@ -57,6 +59,8 @@ test.describe("Roofline domain model", () => {
     expect(result.operationsGFLOP).toBe(7_168);
     expect(result.intensityFLOPPerByte).toBe(2_048);
     expect(result.memoryCeilingTFLOPS).toBeCloseTo(3_354.624, 8);
+    expect(result.weightStreamTimeMs).toBeCloseTo((3.5 / 1_638) * 1000, 10);
+    expect(result.referenceMatrixTimeMs).toBeCloseTo(7.168, 10);
     expect(result.bottleneck).toBe("compute");
   });
 
@@ -144,6 +148,8 @@ test.describe("Roofline domain model", () => {
     });
 
     expect(result.memoryCeilingTFLOPS).toBeNull();
+    expect(result.weightStreamTimeMs).toBeNull();
+    expect(result.referenceMatrixTimeMs).toBeCloseTo(0.014, 10);
     expect(result.attainableTFLOPS).toBeNull();
     expect(result.ridgeIntensityFLOPPerByte).toBeNull();
     expect(result.bottleneck).toBe("unknown");

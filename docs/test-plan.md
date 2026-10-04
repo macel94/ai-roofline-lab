@@ -1,17 +1,17 @@
 # Test and Deployment Plan — AI Silicon / Roofline Lab
 
-**Refresh baseline:** October 4, 2026. Tests run against the static production build to verify use without authentication or an API.
+**Physical-map baseline:** October 4, 2026. Tests run against the built static site, without authentication, backend, runtime API, or remote asset service.
 
 ## 1. Strategy
 
 | Level | Purpose | Tool/path |
 |---|---|---|
 | Type check | Application/test types and DOM APIs | Strict TypeScript `tsc --noEmit` |
-| Domain tests | Equations, units, fit, bottleneck states | Pure model functions imported by Playwright tests |
-| E2E | English UI, all-profile comparison, interaction, no auth | Playwright Chromium against `vite preview` serving `dist/` |
-| Accessibility | Semantics, keyboard, reduced motion, viewport | Playwright locators/assertions plus manual WCAG 2.2 AA contrast review |
+| Domain tests | Weight bytes, matrix work, stream/reference times, fit, bottleneck boundaries | Pure model functions imported by Playwright tests |
+| E2E | English map, physical path, all-profile comparison, workload shifts, no auth | Playwright Chromium against `vite preview` serving `dist/` |
+| Accessibility | Semantics, keyboard, reduced motion, viewport | Playwright locators/assertions plus manual WCAG 2.2 AA review |
 | Static build | Local assets, relative base path, output size | `vite build`, inspect `dist`, preview server, `curl` |
-| Performance | RAF loop, frame intervals, update responsiveness | E2E smoke plus repeatable desktop browser frame sample |
+| Motion | Pause/resume, reduced motion, hidden/offscreen suspension | CSS animation state and `IntersectionObserver` assertions; no application RAF loop |
 | Live Pages | Deployment and real public URL | GitHub Actions result, HTTP/asset checks, remote browser smoke |
 
 Tests use versioned local profile data. No API key, login, remote storage, or external test service is required.
@@ -24,63 +24,58 @@ Tests use versioned local profile data. No API key, login, remote storage, or ex
 4. Decode intensity: 7B Q4, batch 1, K=1 gives 4 FLOP/byte; batch 8 gives 32.
 5. Prefill intensity: 7B Q4, batch 1, K=512 gives 2,048 FLOP/byte.
 6. Memory roof: BW=1,000 GB/s, I=4 gives 4 TFLOP/s.
-7. Roofline min: with `P_ref=1,000 TFLOP/s`, test memory-limited and compute-limited sides.
-8. Ridge point: `P_ref=1,000`, BW=1,000 gives 1,000 FLOP/byte.
-9. Boundary states: memory-bound below 95% compute roof, compute-bound above 105%, balanced within ±5%.
-10. Invalid values: q=0, batch=0, negative model size, NaN, infinity, empty and overflow do not yield bogus calculations/fit.
-11. Unknown profiles: missing bandwidth/capacity is `Unknown`, never zero or implicit fit.
-12. Data fixtures: Apple facts, derived DDR bandwidths, per-GPU DGX values, TPU-per-chip values, and Groq lower-bound claim match `research.md`.
+7. Roofline minimum and ridge point with `P_ref=1,000 TFLOP/s`.
+8. Ideal data time: 3.5 GB / 614 GB/s × 1,000 = 5.7003 ms.
+9. Reference matrix time: 14 GFLOP / 1,000 TFLOP/s = 0.014 ms; 7,168 GFLOP gives 7.168 ms.
+10. Bottleneck boundaries: data-feed limited below 95% reference compute; matrix-work limited above 105%; balanced within ±5%.
+11. Invalid values: q=0, batch=0, negative model size, NaN, infinity, empty and overflow do not yield bogus calculations/fit.
+12. Unknown values: missing bandwidth/capacity are `Unknown`, never zero or implicit fit.
+13. Data fixtures: Apple facts, derived DDR bandwidths, per-GPU DGX values, TPU-per-chip values, and Groq lower-bound claim match `research.md`.
 
 ## 3. Playwright E2E — static production build
 
-### First screen and language
+### First screen and physical explanation
 
 - `npm run test:e2e` builds `dist/` before launching `vite preview`.
-- Page title, page language, visible copy, labels, tooltips, error states, and accessible names are English (en-US).
-- At 1280×800 and 100% zoom, the primary workload controls, all-profile selector, chart, and first comparison summaries are visible or operable without scrolling through an introductory gallery.
-- The UI does not require login and has no unhandled JavaScript errors.
+- Page title, language, visible copy, accessible names, errors, and documentation are English (en-US).
+- At 1280×800, the visitor sees the Decode/Prefill switch, workload bytes and operations, the live “why” explanation, and the start of the shared 2D map before the detailed workload form or Roofline disclosure.
+- The shared map renders exactly eight aligned hardware lanes; all eight are included on first load.
+- Each path explicitly identifies a memory tier, data rate, engine, capacity/fit, bottleneck stage, per-chip compute fact/evidence, source link, and the two modeled stage times where included.
+- Workload receipt for the default 7B Q4 Decode case is 3.5 GB, 14 GFLOP, and 4 FLOP/byte; the shared 1,000 TFLOP/s reference gives 0.014 ms matrix work.
+- The UI does not require login and has no unhandled JavaScript errors or external runtime requests.
 
-### Multi-chip comparison
+### Shared comparison and “eureka” transition
 
-- Exactly eight profile controls exist.
-- On first load, all eight have selected state, all available curves appear, and all eight result rows/cards are visible without opening a collapsed table.
-- Each selection toggle adds/removes only its own curve/result and preserves the remaining profile states.
-- “Select all,” “Clear all,” and reset-to-default perform the documented behavior.
-- With no profiles selected, an explicit empty state and Select all action appear; stale results do not remain.
-- Changing a workload input recomputes every included profile from the same input state.
-- Focusing one data path changes emphasis/details without removing any comparison curve/result.
-- Excluding a focused profile clears or redirects focus but does not silently change other inclusions.
+- Each lane has an accessible include/exclude button; excluded lanes stay visible but are dimmed. Inclusion updates the insight and optional Roofline/table without changing other profiles.
+- “Select all,” “Clear all,” and reset perform their documented behavior. Zero selected profiles has an explicit explanation and restore action.
+- Decode defaults to low reuse and data-feed bottlenecks. At the default Q4/512-token Prefill case, expected classification is 3 data-feed limited and 5 matrix-work limited at the shared reference rate.
+- Model size, weight bits, batch, context, shared reference rate, and host RAM update workload quantities, stream/reference times, fit, and bottleneck state.
+- Verify fit/does-not-fit/unknown, including 70B Q4 against one 32 GB TPU v6e chip and unknown Groq capacity.
+- Profile-specific compute facts retain precision and scope: for example B200 FP4 dense and TPU v6e BF16/INT8 are displayed separately, not ranked as interchangeable peaks. Quantized weight bits do not imply arithmetic precision.
+- Source links open only on user action; there are no automatic source fetches.
 
-### Workload, values, and sources
+### Responsive/accessibility/motion
 
-- Decode/prefill, model parameter count, q4/q8/16-bit weights, batch, context, compute ceiling, and host RAM update the simulation.
-- Verify default values and numeric cases in `model.spec.ts`; validate en-US number grouping (`2,048`, `16,384`).
-- Verify memory-bound, compute-bound, balanced, invalid-input, fit, does-not-fit, and unknown states.
-- For 70B Q4, 42 GB estimated working set does not fit one 32 GB v6e chip; Groq capacity remains Unknown.
-- Profile sources open voluntarily in a new tab and are not fetched automatically.
-
-### Responsive/accessibility
-
-- Keyboard can reach/toggle all profiles, move every range input with arrow keys, use focus/reset, and open disclosures.
-- Visible focus ring; English accessible names and selected states; no color-only series encoding.
-- `prefers-reduced-motion: reduce` keeps calculations/control state functional and stops the RAF loop when the canvas is in view.
-- Desktop (1280×800), tablet (768×1024), mobile (360×800 / 390×844), and 200% zoom: no critical overlap or page-level horizontal overflow.
-- Motion loop starts when the flow canvas enters the viewport, stops when it leaves, on hidden tab, pause, or reduced motion, and resumes on return when permitted.
-- Resize and repeated selection changes do not leave duplicate observers or animation loops.
+- Keyboard reaches/toggles each chip lane, changes phase and all ranges, and opens technical/source disclosures; focus is visible and survives lane updates.
+- Color is paired with labels, numbers, and “Data feed”/“Matrix work” text states.
+- `prefers-reduced-motion: reduce` pauses flow motion while all calculations and controls continue to work.
+- A visible Pause/Resume control works. Motion pauses when the meaningful map area is outside the viewport or the document is hidden. The hidden-document E2E assertion overrides `visibilityState` and dispatches `visibilitychange` to exercise the handler deterministically; it is not a real background-tab scheduling measurement.
+- Desktop (1280×800 / 1600×1000), tablet (768×1024), and mobile (390×844 / 360×800): no page-level horizontal overflow or critical overlap.
+- The CSS transform cue is explicitly documented as a log-scaled visual, not literal packet timing. There is no JavaScript animation loop.
 
 ### Runtime network
 
-- Fail E2E if the app requests runtime resources from external origins.
-- Source links are navigated only on user action.
-- Block non-local requests after initial load and repeat core control/compare actions; the bundled profile data continues to work.
+- Fail E2E if the app requests resources from external origins.
+- Source links are navigated only after deliberate user action.
+- Block non-local requests after initial load and repeat core phase/selection actions; bundled profile data must continue working.
 
-## 4. 60 FPS and bundle budget
+## 4. Motion and bundle budget
 
-- One `requestAnimationFrame` loop, delta-time, max 24 particles, no per-frame DOM/layout mutation; suspend when hidden or offscreen.
-- E2E wraps RAF and verifies frame progress while active and no progress while reduced-motion, paused, hidden, or offscreen.
-- On a reference desktop, target 60 fps (16.7 ms/frame). Record 5-second median and p95 under all profiles and a maximum workload. Do not make an exact-60 CI assertion on a virtualized runner; verify no duplicate loops or input-blocking work.
+- At most one small CSS-transform stream signal per visible chip lane; no per-frame DOM/layout mutation and no application `requestAnimationFrame` loop.
+- Use `IntersectionObserver` (with a 100 px safe-viewport inset), document visibility, a user toggle, and `prefers-reduced-motion` to suspend motion.
+- Keep the motion target smooth (about 60 fps on a capable reference browser) without asserting an exact frame cadence on a virtualized CI runner.
 - Target ≤150 KB gzip JavaScript, ≤30 KB gzip CSS, ≤300 KB local assets; no remote font/image.
-- SVG recalculations occur on input/selection/resize, independently of the canvas tick.
+- SVG Roofline recalculations occur on input/selection, independently of the CSS flow cue.
 
 ## 5. Local commands
 
@@ -105,30 +100,28 @@ npm run preview
 - Minimum permissions: `contents: read`, `pages: write`, `id-token: write`; concurrency group `github-pages`.
 - Public Free-tier repo: `macel94/ai-roofline-lab`. Do not change or deploy to any other repository.
 
-## 7. English refresh — local verification
+## 7. Physical-map refresh — local verification
 
 - `npm run test:e2e`: **21/21 passed** (11 domain tests + 10 Chromium E2E tests; strict type-check and production build included).
 - `npm audit --audit-level=moderate`: zero vulnerabilities.
-- Build: HTML 21.48 KB (6.15 KB gzip), CSS 31.93 KB (7.71 KB gzip), JS 29.62 KB (9.53 KB gzip), favicon SVG 490 B.
-- At 1280×800, all workload controls and all eight included profile chips are visible; the Roofline plot begins in the initial viewport. At 390×844, document width equals viewport width.
-- Initial state: eight selected profiles, eight Roofline curves, and eight visible result rows. Toggling one chip changes only its own curve/result; focus keeps the comparison intact.
-- No Italian diacritics or known Italian UI phrases remain in source, tests, docs, or package metadata.
-- English palette contrast spot-check: primary text 16.25:1, chart ticks 10.13:1, profile sublabels 9.35:1; chip traces ≥6.34:1 on the plot.
-- Chromium headless desktop 1440×900, flow canvas visible, five-second sample: default 300 frames / 5,015 ms, 59.8 fps, median 16.7 ms, p95 16.8 ms, one interval over 20 ms (max 49.9 ms).
-- Maximum workload (120B, 16-bit weights, batch 32, prefill 8,192): 302 frames / 5,008 ms, 60.3 fps, median 16.7 ms, p95 16.7 ms, no interval over 20 ms (max 16.8 ms).
-- These are local browser samples, not guarantees for every device.
+- Build: HTML 21.73 KB (6.29 KB gzip), CSS 50.15 KB (10.85 KB gzip), JS 32.03 KB (10.42 KB gzip), favicon SVG 490 B.
+- Desktop 1280×800, wide 1600×1000, tablet 768×1024, and mobile 390×844 / 360×800 all have document width equal to viewport width; no browser errors in the local layout probe.
+- Default Decode shows eight active physical lanes, 3.5 GB weight traffic, 14 GFLOP matrix work, and the data-feed explanation. Prefill changes work to 7,168 GFLOP at the same weight volume; five lanes hit the matrix-work reference first and three remain data-feed limited.
+- Lane-stage-time and capacity assertions, chip compute facts/evidence, keyboard selection, reduced motion, pause/resume, hidden-document handling, offscreen suspension, offline phase changes, and the optional Roofline chart/table all pass.
+- Chromium frame-cadence samples at 1440×900 with the map visible: default 301 intervals / 5,016.4 ms = 60.0 fps (median 16.7 ms, p95/max 16.8 ms); maximum 120B/16-bit/batch-32/8,192-token Prefill 287 intervals / 5,016.5 ms = 57.2 fps (median/p95 16.7 ms, maximum 250 ms). The maximum sample starts immediately after changing controls and includes a long interval; this is a reference-browser observation, not a guaranteed animation frame rate or hardware benchmark.
+- These stage times are teaching estimates, not measured chip latency or a cost/performance ranking.
 
 ## 8. GitHub Pages deployment
 
 - Public repository: [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab).
 - Published URL: [https://macel94.github.io/ai-roofline-lab/](https://macel94.github.io/ai-roofline-lab/).
 - Pages source is GitHub Actions; the workflow uses Node 24 and current official Actions releases.
-- The English refresh is published after the workflow’s full E2E/build job succeeds.
+- The physical-map refresh becomes current on the public URL after its full workflow succeeds.
 
 ## 9. Post-deploy checklist
 
 1. Confirm the latest Action run is successful and its SHA matches `main`.
 2. Confirm the public URL and all relative assets return HTTP 200 with expected MIME types.
-3. Open the live site and try decode and prefill, all eight profiles, independent toggles, data-path focus, fit states, and reduced motion.
+3. Open the live site and try Decode/Prefill, eight lanes, individual toggles, fit states, per-chip compute fact qualifications, and reduced motion.
 4. Check browser console/network: no API/auth and no automatic external requests.
 5. Confirm only the new `ai-roofline-lab` repository was created or changed.
