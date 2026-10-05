@@ -44,8 +44,8 @@ export const MIN_COMPUTE_CEILING_TFLOPS = 10;
 export const MAX_COMPUTE_CEILING_TFLOPS = 10_000;
 
 export function validateScenario(input: ScenarioInput): string | null {
-  if (!Number.isFinite(input.modelParamsBillion) || input.modelParamsBillion <= 0) {
-    return "Model size must be a positive number.";
+  if (!Number.isFinite(input.modelParamsBillion) || input.modelParamsBillion < 1 || input.modelParamsBillion > 2000) {
+    return "Model size must be between 1 and 2,000 billion parameters (2T).";
   }
 
   if (![4, 8, 16].includes(input.weightBits)) {

@@ -1,0 +1,140 @@
+/* Resource-driven symbolic floorplans. The schematic scrolls, never the page. */
+.scenario-bar { margin-bottom: 14px; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; }
+.cluster-controls { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 12px; min-width: 0; }
+.cluster-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.cluster-heading h3 { font-size: 15px; margin: 0; }
+.model-presets { display: flex; gap: 5px; flex-wrap: wrap; }
+.model-presets button, .chip-override-controls button { padding: 6px 12px; background: #192b3d; color: var(--lime); border: 1px solid #506647; border-radius: 6px; cursor: pointer; font-size: 11px; }
+.model-presets button:hover, .chip-override-controls button:hover { border-color: var(--lime); }
+.cluster-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.cluster-grid label, .chip-override-controls label { display: grid; gap: 5px; font-size: 11px; color: #c6d3e1; min-width: 0; align-content: start; }
+.cluster-grid input, .cluster-grid select, #model-size-exact, .chip-override-controls input { width: 100%; min-width: 0; min-height: 34px; padding: 6px 8px; border: 1px solid #40566f; border-radius: 6px; background: #0b1421; color: #f2f6fa; font-size: 12px; }
+input:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
+.exact-size-label { font-size: 9px !important; margin-top: 5px; }
+#model-size-exact { min-height: 28px; padding: 3px 6px; }
+.check-control { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 12px; }
+.check-control input { accent-color: var(--lime); }
+.cluster-help { color: #aebece; font-size: 11px; margin: 8px 0; }
+.shape-controls summary { cursor: pointer; color: var(--cyan); font-size: 12px; }
+.scenario-error { color: var(--danger); font-size: 12px; font-weight: 700; }
+.simulation-key { display: flex; flex-wrap: wrap; gap: 14px; padding: 14px 0 9px; font-size: 10px; color: var(--muted); }
+.key-hot { color: var(--danger); }
+.key-fast { color: var(--lime); }
+.silicon-lanes { gap: 14px; }
+.architecture-lane { grid-template-columns: 155px minmax(0, 1fr) 225px; padding: 12px; gap: 10px 14px; align-items: start; }
+.architecture-lane .lane-identity { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.architecture-lane .lane-select { padding: 5px 0; }
+.architecture-lane .lane-identity-copy > strong { white-space: normal; font-size: 15px; }
+.architecture-lane .lane-identity-copy > small { white-space: normal; font-size: 10px; }
+.architecture-lane .lane-vendor { white-space: normal; font-size: 9px; }
+.unit-badge { display: inline-block; padding: 5px 9px; border-radius: 6px; border: 1px solid #496445; background: #1c2a24; color: var(--lime); font-size: 11px; font-weight: 750; }
+.architecture-physical { min-width: 0; }
+.physical-viewport { min-width: 0; width: 100%; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #475e78 #0b1421; border: 1px solid #263c52; border-radius: 8px; background: #09131f; }
+.physical-map { display: block; width: 100%; min-width: 670px; }
+.physical-map text { fill: #edf3f8; font: 14px ui-sans-serif, system-ui, sans-serif; font-weight: 700; pointer-events: none; }
+.physical-map .physical-sub { fill: #b5c5d3; font-size: 11px; font-weight: 500; }
+.inactive-engines rect { fill: #16202e; stroke: #4a5a71; }
+.physical-map .inactive-engines text { font-size: 10px; fill: #a8b8cc; }
+.architecture-lane .lane-verdict .math-assumption { font-size: 10px; color: #aebed1; }
+.chip-outline { stroke: #50637a; stroke-dasharray: 4 3; fill: #122135; }
+.physical-map .chip-caption { fill: #9fafc2; font-size: 11px; }
+.physical-component > rect:not(.memory-cell) { fill: #17283d; stroke: #425a73; stroke-width: 1.5; }
+.physical-component.fast > rect:not(.memory-cell) { stroke: #73974c; fill: #172b2c; }
+.physical-component.hot > rect:not(.memory-cell) { stroke: #ff7882; stroke-width: 2.5; fill: #41252c; }
+.physical-map .physical-limit, .physical-map .physical-blocked { fill: #ffa4a9; font-size: 12px; }
+.physical-map .physical-status { fill: #d5e8a7; font-size: 12px; }
+.physical-wire { stroke: #7796ae; stroke-width: 3; fill: none; }
+.physical-wire.fast { stroke: #8faf62; }
+.physical-wire.hot { stroke: #ff7882; stroke-width: 5; stroke-dasharray: 7 4; }
+.memory-cell.empty { fill: #122133; stroke: #50627a; }
+.memory-cell.occupied { fill: #aed765; stroke: #c8f36a; }
+.memory-cell.overflow { fill: #ff7882; stroke: #ff9b9f; }
+.processor-cell > rect:not(.systolic-cell):not(.tile-cache) { fill: #2d5247; stroke: #91ad79; }
+.processor-cell text { font-size: 11px; fill: #dfebd3; }
+.processor-cell .tile-cache { fill: #8dae7a; stroke: none; }
+.hot .processor-cell > rect:not(.systolic-cell):not(.tile-cache) { fill: #783540; stroke: #ff9fa5; }
+.systolic-cell { fill: #9bc779; animation: systolic-wave var(--step-duration, 4s) ease-in-out infinite; }
+.hot .systolic-cell { fill: #ff8992; }
+.processor-cell { animation: tile-work var(--step-duration, 4s) ease-in-out infinite; }
+.packet { fill: #e5ffab; offset-distance: 0%; animation: packet-transfer 3s linear infinite; }
+.packet.hot { fill: #ffb3b6; }
+@keyframes packet-transfer { to { offset-distance: 100%; } }
+@keyframes tile-work { 0%, 55%, 100% { opacity: .55; } 10%, 40% { opacity: 1; } }
+@keyframes systolic-wave { 0%, 80%, 100% { opacity: .25; } 30%, 50% { opacity: 1; } }
+.silicon-workbench.is-paused .packet, .silicon-workbench.is-paused .processor-cell,
+.silicon-workbench.is-paused .systolic-cell, .motion-paused .hero-path-link i,
+.is-offscreen .packet, .is-offscreen .processor-cell, .is-offscreen .systolic-cell { animation-play-state: paused; }
+.queue-dot { fill: #ff9ca4; }
+.physical-map.is-blocked .processor-cell, .physical-map.is-blocked .systolic-cell,
+.is-excluded .packet, .is-excluded .processor-cell, .is-excluded .systolic-cell { animation: none; }
+.physical-map.is-blocked .processor-cell { opacity: .35; }
+.capacity-readout { display: grid; gap: 5px; margin-top: 7px; }
+.capacity-readout .lane-fit { font-size: 11px; font-weight: 700; color: #d4e5b0; }
+.capacity-readout.is-hot .lane-fit { color: #ffa1a8; }
+.capacity-readout small { color: var(--muted); font-size: 10px; }
+.occupancy-track { height: 7px; background: #213148; border-radius: 4px; overflow: hidden; }
+.occupancy-fill { display: block; height: 100%; background: var(--lime); }
+.occupancy-fill.overflow { background: var(--danger); }
+.architecture-lane .lane-detail { display: block; padding: 0; }
+.architecture-lane .lane-verdict { gap: 5px; padding: 0; }
+.architecture-lane .lane-verdict-label { font-size: 9px; color: #aebcce; }
+.architecture-lane .lane-verdict > strong { color: #ff9fa5; font-size: 14px; }
+.architecture-lane .lane-verdict .simulation-speed { color: #f3f8f4; font-size: 23px; font-variant-numeric: tabular-nums; }
+.architecture-lane .lane-verdict > small { font-size: 11px; }
+.bottleneck-why { font-size: 11px; color: #c2d0de; line-height: 1.5; margin: 8px 0; }
+.sizing-results { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--line); font-size: 11px; }
+.sizing-results dt { color: #afbece; }
+.sizing-results dd { color: var(--lime); margin: 0 0 7px; font-weight: 700; }
+.resource-times { grid-column: 2; display: grid; grid-template-columns: 1fr; gap: 4px; min-width: 0; }
+.resource-time { display: grid; grid-template-columns: 90px minmax(0, 1fr) 83px; align-items: center; gap: 7px; font-size: 10px; color: #b9cbb0; }
+.resource-time strong { font-variant-numeric: tabular-nums; text-align: right; color: #d7e7be; }
+.resource-time.is-hot, .resource-time.is-hot strong { color: #ff9ca4; font-weight: 750; }
+.resource-bar { height: 6px; display: block; border-radius: 3px; background: #243246; overflow: hidden; }
+.resource-bar i { display: block; height: 100%; background: #a1cc70; border-radius: 3px; }
+.resource-time.is-hot .resource-bar i { background: var(--danger); }
+.transport-note { grid-column: 2; color: #aebece; font-size: 10px; }
+.architecture-lane .lane-physics-note { display: block; grid-column: 1 / -1; font-size: 10px; color: #b3c3d0; }
+.chip-assumptions { grid-column: 1 / -1; min-width: 0; border-top: 1px solid var(--line); padding-top: 7px; font-size: 11px; }
+.chip-assumptions summary { color: var(--cyan); cursor: pointer; }
+.chip-assumptions p { color: #afc0d1; font-size: 11px; }
+.chip-override-controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.chip-assumptions .lane-source { font-size: 11px; white-space: normal; }
+.chip-assumptions .lane-compute-fact { display: block; font-size: 11px !important; }
+@media (max-width: 1100px) {
+  .scenario-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cluster-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .architecture-lane { grid-template-columns: minmax(0, 1fr) 215px; }
+  .architecture-lane .lane-identity { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+  .architecture-lane .lane-select { width: auto; flex: 1; }
+  .resource-times, .transport-note { grid-column: 1; }
+}
+@media (max-width: 760px) {
+  .architecture-lane { grid-template-columns: minmax(0, 1fr); }
+  .architecture-lane .lane-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bottleneck-why { margin: 0; }
+  .sizing-results { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+  .sizing-results dd { margin: 0; }
+  .sizing-results dt:nth-of-type(2) { grid-column: 1; }
+  .resource-times { grid-column: 1; }
+  .physical-map { min-width: 780px; }
+}
+@media (max-width: 620px) {
+  .scenario-bar, .cluster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cluster-grid { gap: 10px; }
+  .cluster-grid label { font-size: 10px; }
+  .cluster-grid input, .cluster-grid select { font-size: 11px; padding: 5px; }
+  .check-control, .cluster-help { font-size: 10px; }
+  .architecture-lane { padding: 9px; }
+  .architecture-lane .lane-identity-copy > strong { font-size: 14px; }
+  .architecture-lane .lane-identity { flex-wrap: wrap; }
+  .unit-badge { font-size: 10px; }
+  .architecture-lane .lane-detail { grid-template-columns: 1fr; }
+  .sizing-results { grid-template-columns: 1fr 1fr; }
+  .chip-override-controls { grid-template-columns: 1fr; }
+  .resource-time { grid-template-columns: 78px minmax(0, 1fr) 75px; }
+  .capacity-readout .lane-fit { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .packet, .processor-cell, .systolic-cell, .hero-path-link i { animation: none !important; }
+  .processor-cell, .systolic-cell { opacity: 1; }
+}

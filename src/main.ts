@@ -4,6 +4,7 @@ import {
   type WorkloadPhase,
 } from "./domain/model";
 import { HARDWARE_PROFILES, type ArchitectureProfile } from "./data/profiles";
+import { calculateArchitecture, estimateShape, validateCluster, type ChipOverride } from "./domain/architecture";
 import { renderSiliconMap, type SiliconMapTargets } from "./visuals/silicon-map";
 import { formatNumber, renderRoofline } from "./visuals/roofline";
 
@@ -16,6 +17,17 @@ interface AppState {
   computeCeilingTFLOPS: number;
   hostRamGB: number;
   selectedProfileIds: Set<string>;
+  unitsMode: "auto" | "manual";
+  units: number;
+  networkGbps: number;
+  networkLatencyUs: number;
+  offload: boolean;
+  efficiency: number;
+  targetTokensPerSecond: number;
+  layers: number;
+  hiddenWidth: number;
+  kvRatio: number;
+  activeFraction: number;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {
@@ -33,13 +45,21 @@ const state: AppState = {
   computeCeilingTFLOPS: 1_000,
   hostRamGB: 128,
   selectedProfileIds: new Set(HARDWARE_PROFILES.map((profile) => profile.id)),
+  unitsMode: "auto", units: 1, networkGbps: 400, networkLatencyUs: 2,
+  offload: false, efficiency: 0.7, targetTokensPerSecond: 20,
+  ...estimateShape(7), kvRatio: 0.125, activeFraction: 1,
 };
+const chipOverrides = new Map<string, ChipOverride>();
+let lastScenarioSignature = "";
 
 const siliconWorkbench = getElement<HTMLElement>("silicon-workbench");
 const siliconLanes = getElement<HTMLDivElement>("silicon-lanes");
 const phaseControl = getElement<HTMLFieldSetElement>("phase-control");
 const scenarioForm = getElement<HTMLFormElement>("scenario-form");
 const modelSizeInput = getElement<HTMLInputElement>("model-size");
+const exactModelInput = getElement<HTMLInputElement>("model-size-exact");
+// Put controls before the long physical diagrams so a 2T scenario is easy to explore.
+siliconWorkbench.before(scenarioForm);
 const weightBitsInput = getElement<HTMLSelectElement>("weight-bits");
 const batchInput = getElement<HTMLInputElement>("batch-size");
 const contextInput = getElement<HTMLInputElement>("context-size");
@@ -70,16 +90,21 @@ const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
 let userPausedMotion = false;
 let mapInViewport = false;
 let mapObserver: IntersectionObserver | null = null;
+const visibleMaps = new Set<Element>();
 
 if ("IntersectionObserver" in window) {
   mapObserver = new IntersectionObserver(
     (entries) => {
-      mapInViewport = entries.some((entry) => entry.target === siliconWorkbench && entry.isIntersecting);
+      for (const entry of entries) {
+        if (entry.isIntersecting) visibleMaps.add(entry.target);
+        else visibleMaps.delete(entry.target);
+        entry.target.closest(".silicon-lane")?.classList.toggle("is-offscreen", !entry.isIntersecting);
+      }
+      mapInViewport = visibleMaps.size > 0;
       updateMotionControl();
     },
-    { rootMargin: "-100px 0px -100px 0px" },
+    { rootMargin: "0px" },
   );
-  mapObserver.observe(siliconWorkbench);
 } else {
   mapInViewport = true;
 }
@@ -90,6 +115,13 @@ updateMotionControl();
 scenarioForm.addEventListener("submit", (event) => event.preventDefault());
 scenarioForm.addEventListener("input", updateFromControls);
 scenarioForm.addEventListener("change", updateFromControls);
+scenarioForm.addEventListener("click", (event) => {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-model-size]") : null;
+  if (!button) return;
+  modelSizeInput.value = button.dataset.modelSize ?? "7";
+  exactModelInput.value = modelSizeInput.value;
+  updateFromControls();
+});
 phaseControl.addEventListener("change", updateFromControls);
 siliconLanes.addEventListener("click", toggleProfile);
 getElement<HTMLButtonElement>("select-all-profiles").addEventListener("click", selectAllProfiles);
@@ -107,22 +139,65 @@ function readInputs(): void {
   if (!selectedPhase || ![4, 8, 16].includes(rawBits)) return;
 
   state.phase = selectedPhase.value as WorkloadPhase;
-  state.modelParamsBillion = Number(modelSizeInput.value);
+  state.modelParamsBillion = Number(exactModelInput.value);
   state.weightBits = rawBits as 4 | 8 | 16;
   state.batch = Number(batchInput.value);
   state.contextTokens = Number(contextInput.value);
   state.computeCeilingTFLOPS = Number(computeInput.value);
   state.hostRamGB = Number(hostRamInput.value);
+  state.unitsMode = getElement<HTMLSelectElement>("units-mode").value as "auto" | "manual";
+  const unitInput = getElement<HTMLInputElement>("unit-count");
+  if (state.unitsMode === "auto" && (!unitInput.validity.valid || unitInput.value === "")) unitInput.value = "1";
+  state.units = Number(unitInput.value);
+  state.networkGbps = Number(getElement<HTMLSelectElement>("network-bandwidth").value);
+  state.networkLatencyUs = Number(getElement<HTMLInputElement>("network-latency").value);
+  state.offload = getElement<HTMLInputElement>("host-offload").checked;
+  state.efficiency = Number(getElement<HTMLInputElement>("efficiency").value) / 100;
+  state.targetTokensPerSecond = Number(getElement<HTMLInputElement>("target-rate").value);
+  state.kvRatio = Number(getElement<HTMLSelectElement>("kv-ratio").value);
+  state.activeFraction = Number(getElement<HTMLInputElement>("active-fraction").value) / 100;
+  const autoShape = getElement<HTMLSelectElement>("shape-mode").value === "auto";
+  const layers = getElement<HTMLInputElement>("model-layers");
+  const hidden = getElement<HTMLInputElement>("hidden-width");
+  if (autoShape && state.modelParamsBillion >= 1 && state.modelParamsBillion <= 2000) {
+    const shape = estimateShape(state.modelParamsBillion);
+    layers.value = String(shape.layers);
+    hidden.value = String(shape.hiddenWidth);
+  }
+  layers.disabled = autoShape;
+  hidden.disabled = autoShape;
+  state.layers = Number(layers.value);
+  state.hiddenWidth = Number(hidden.value);
+  getElement<HTMLInputElement>("unit-count").disabled = state.unitsMode === "auto";
 }
 
-function updateFromControls(): void {
+function updateFromControls(event?: Event): void {
+  if (event?.target === modelSizeInput) exactModelInput.value = modelSizeInput.value;
+  if (event?.target === exactModelInput && exactModelInput.validity.valid && exactModelInput.value !== "") modelSizeInput.value = exactModelInput.value;
   readInputs();
+  // Native change fires on blur after input. Do not replace a pending click target.
+  if (JSON.stringify(state) === lastScenarioSignature && getElement<HTMLElement>("scenario-error").hidden) return;
   render();
 }
 
 function toggleProfile(event: MouseEvent): void {
   const target = event.target;
   if (!(target instanceof Element)) return;
+  const apply = target.closest<HTMLButtonElement>("button[data-apply-chip]");
+  if (apply) {
+    const id = apply.dataset.applyChip!;
+    const lane = apply.closest<HTMLElement>(".silicon-lane")!;
+    const rate = lane.querySelector<HTMLInputElement>(".chip-rate")!;
+    const capacity = lane.querySelector<HTMLInputElement>(".chip-capacity")!;
+    if (!rate.reportValidity() || !capacity.reportValidity()) return;
+    chipOverrides.set(id, {
+      ...(rate.value ? { mathTFLOPS: Number(rate.value) } : {}),
+      ...(capacity.value ? { capacityGB: Number(capacity.value) } : {}),
+    });
+    render();
+    siliconLanes.querySelector<HTMLButtonElement>(`button[data-apply-chip="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    return;
+  }
   const button = target.closest<HTMLButtonElement>("button[data-profile-id]");
   const profileId = button?.dataset.profileId;
   const profile = profileId ? HARDWARE_PROFILES.find((item) => item.id === profileId) : undefined;
@@ -152,6 +227,7 @@ function clearProfiles(): void {
 
 function resetScenario(): void {
   scenarioForm.reset();
+  chipOverrides.clear();
   const decodeRadio = phaseControl.querySelector<HTMLInputElement>('input[name="phase"][value="decode"]');
   if (decodeRadio) decodeRadio.checked = true;
 
@@ -168,6 +244,14 @@ function resetScenario(): void {
 
 function render(): void {
   readInputs();
+  const validationError = validateCluster(state);
+  const errorOutput = getElement<HTMLParagraphElement>("scenario-error");
+  errorOutput.hidden = !validationError;
+  errorOutput.textContent = validationError ? `${validationError} Last valid visualization retained.` : "";
+  if (validationError) return;
+  lastScenarioSignature = JSON.stringify(state);
+  const architectureResults = new Map(HARDWARE_PROFILES.map(profile =>
+    [profile.id, calculateArchitecture(state, profile, chipOverrides.get(profile.id))] as const));
   const allResults = new Map(
     HARDWARE_PROFILES.map((profile) => [profile.id, calculateScenario(state, profile)] as const),
   );
@@ -178,7 +262,7 @@ function render(): void {
   const firstProfileId = HARDWARE_PROFILES[0]?.id ?? "";
   const arithmeticIntensity = allResults.get(firstProfileId)?.intensityFLOPPerByte ?? 0;
 
-  renderControls(selectedProfiles.some((profile) => profile.capacityMode === "host"));
+  renderControls(state.offload || selectedProfiles.some((profile) => profile.capacityMode === "host"));
   renderComparison(selectedProfiles, results);
   renderSiliconMap(
     siliconMapTargets,
@@ -186,7 +270,19 @@ function render(): void {
     allResults,
     state.selectedProfileIds,
     state,
+    architectureResults,
+    chipOverrides,
   );
+  if (mapObserver) {
+    mapObserver.disconnect();
+    visibleMaps.clear();
+    mapInViewport = false;
+    for (const viewport of siliconLanes.querySelectorAll(".physical-viewport")) {
+      viewport.closest(".silicon-lane")?.classList.add("is-offscreen");
+      mapObserver.observe(viewport);
+    }
+    updateMotionControl();
+  }
   getElement<HTMLElement>("intensity-value").textContent = formatNumber(arithmeticIntensity, 1);
 
   const memoryRoofs = Array.from(results.values())
@@ -227,20 +323,20 @@ function renderControls(hasHostProfile: boolean): void {
   const contextHelp = getElement<HTMLParagraphElement>("context-help");
 
   const weightFootprintGB = (state.modelParamsBillion * state.weightBits) / 8;
-  const estimatedWorkingSetGB = weightFootprintGB * 1.2;
-  modelOutput.value = `${formatNumber(state.modelParamsBillion, 0)} B`;
+  const kvGB = 2 * state.layers * state.hiddenWidth * state.kvRatio * 2 * state.contextTokens * state.batch / 1e9;
+  const estimatedWorkingSetGB = weightFootprintGB * 1.2 + kvGB;
+  modelOutput.value = state.modelParamsBillion >= 1000 ? `${formatNumber(state.modelParamsBillion / 1000, 3)} T` : `${formatNumber(state.modelParamsBillion, 0)} B`;
   workingSetOutput.value = `${formatNumber(estimatedWorkingSetGB, 1)} GB`;
   batchOutput.value = formatNumber(state.batch, 0);
   contextOutput.value = formatNumber(state.contextTokens, 0);
   computeOutput.value = `${formatNumber(state.computeCeilingTFLOPS, 0)} TFLOP/s`;
   hostRamOutput.value = `${formatNumber(state.hostRamGB, 0)} GB`;
 
-  contextInput.disabled = state.phase === "decode";
-  contextControl.classList.toggle("is-disabled", state.phase === "decode");
-  contextHelp.textContent =
-    state.phase === "decode"
-      ? "Decode models one token per sequence; prompt length is excluded from this simplified phase."
-      : "In prefill, prompt tokens increase idealized weight reuse.";
+  contextInput.disabled = false;
+  contextControl.classList.remove("is-disabled");
+  contextHelp.textContent = state.phase === "decode"
+    ? "Context increases KV capacity and decode memory traffic. One generated token per step."
+    : "Prompt tokens increase matrix reuse and KV storage in the architecture model.";
   hostRamInput.disabled = !hasHostProfile;
 }
 
@@ -294,7 +390,7 @@ function renderComparison(
 
   getElement<HTMLParagraphElement>("selection-status").textContent =
     count === HARDWARE_PROFILES.length
-      ? "All eight chip lanes are active in this shared workload."
+      ? `All ${HARDWARE_PROFILES.length} chip lanes are active in this shared workload.`
       : count === 0
         ? "No chip lanes are active. Use Select all to restore the comparison."
         : `${count} of ${HARDWARE_PROFILES.length} chip lanes are active. Each included lane uses the same workload.`;
@@ -313,6 +409,7 @@ function updateMotionControl(): void {
     document.visibilityState === "visible" &&
     mapInViewport;
   siliconWorkbench.classList.toggle("is-paused", !playing);
+  document.body.classList.toggle("motion-paused", !playing);
   motionToggle.setAttribute("aria-pressed", String(playing));
   motionToggleLabel.textContent = motionPreference.matches
     ? "Reduced motion is on"

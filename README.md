@@ -1,14 +1,16 @@
 # AI Silicon / Roofline Lab
 
-An interactive, static TypeScript lab for seeing why AI workloads wait for memory or matrix computation across Apple silicon, Intel/AMD x86, NVIDIA Blackwell, Google TPU, and Groq LPU.
+A static TypeScript architecture simulator and model-sizing calculator for CPU, GPU, TPU, NPU, and LPU systems, from **1 billion to 2 trillion parameters**.
 
 **Live demo:** [macel94.github.io/ai-roofline-lab](https://macel94.github.io/ai-roofline-lab/)
 
 **Source:** [github.com/macel94/ai-roofline-lab](https://github.com/macel94/ai-roofline-lab)
 
-The primary view is a shared 2D silicon map: eight chip lanes trace model weights from their memory pool, across the data path, into each chip’s matrix engine. It shows the workload’s weight bytes and matrix operations, idealized data-feed time, a clearly labeled shared reference math time, and the stage each lane waits on. All eight chips are included by default; switch between Decode and Prefill to see weight reuse move the bottleneck.
+Nine architecture lanes show symbolic physical layouts: CPU DIMMs/controllers/caches/cores, discrete GPU host RAM/PCIe/HBM/Tensor tiles, TPU buffers/systolic arrays, shared-memory GPU/NPU paths, and Groq SRAM/dataflow. Red hotspots locate RAM-space, memory-bandwidth, bus, compute, or network limits; occupancy blocks, queues, moving packets, and tile activity explain why.
 
-Per-chip compute facts are shown with their precision, scope, and evidence. They are not ranked together: vendor peaks use incompatible formats and system scopes. The shared reference rate is a teaching aid, not a chip specification. This is not a benchmark or a prediction of real tokens/s.
+The calculator includes estimated BF16 KV, model shape/MoE controls, configurable network bandwidth and hop latency, manual or minimum-fit unit allocation, explicit GPU weight offload, and a target tokens/s search up to 1,024 independent memory domains. Per-chip capacity/math assumptions can be edited. Unknown capacity stays unknown; blocked configurations never get throughput claims. More units can be slower when network latency dominates.
+
+**These are optimistic resource estimates, not benchmarks or validated deployments.** Most effective matrix ceilings are explicitly illustrative assumptions; the TPU BF16 peak is vendor-reported. Q4 storage does not imply Q4 arithmetic. Schematics are symbolic, cache/fabric bandwidth is aggregated, and actual runtime/operator support (especially NPU), attention compute, expert routing, and real topology are not validated. A separate normalized Roofline remains available as an optional teaching lens.
 
 The site requires no account, backend, API key, or runtime network service. Source links are optional and open only when clicked.
 
@@ -31,10 +33,11 @@ npm run test:e2e
 
 ## Project documentation
 
-- [Product specification — INVEST and EARS](docs/specification.md)
+- [Implementation plan, equations, and verification](docs/architecture-simulation-plan.md)
+- [Product specification and acceptance criteria](docs/specification.md)
 - [Technical design and model](docs/technical-design.md)
 - [Research, sources, and data qualifications](docs/research.md)
 - [Test and deployment plan](docs/test-plan.md)
 - [Decision log and parallel reviews](docs/decision-log.md)
 
-The original English refresh was specified and reviewed by parallel read-only subagents; the physical-map revision addresses visitor feedback about the clarity of the original graph.
+The architecture-calculator revision responds to feedback that a generic graph did not locate bottlenecks within the physical hardware.

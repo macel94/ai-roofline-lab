@@ -7,10 +7,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta
       name="description"
-      content="See why AI workloads wait for memory or matrix compute in a shared interactive 2D map of eight hardware data paths. Static, sourced, and free of accounts or API calls."
+      content="Size models up to 2 trillion parameters and visualize RAM, bus, compute, and network bottlenecks across CPU, GPU, TPU, and NPU architectures. Static, sourced, and free of accounts or API calls."
     />
     <title>AI Silicon / Roofline Lab — Follow the weights.</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/architecture.css" />
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
@@ -57,7 +58,7 @@
           <div class="simulator-heading">
             <div>
               <p class="eyebrow"><span class="eyebrow-line"></span> SHARED SILICON SPACE · 01</p>
-              <h2 id="simulator-title">Eight paths. <em>One workload.</em></h2>
+              <h2 id="simulator-title">Physical architectures. <em>Visible bottlenecks.</em></h2>
             </div>
             <div class="simulator-heading-actions">
               <span class="live-pill"><span class="status-dot" aria-hidden="true"></span> LIVE · LOCAL MODEL</span>
@@ -68,9 +69,9 @@
           <section class="silicon-workbench" id="silicon-workbench" aria-labelledby="workbench-title">
             <div class="workbench-heading">
               <div class="workbench-title-copy">
-                <span class="section-kicker">A SHARED 2D DATA-PATH MAP · CHIP ROWS × SILICON STAGES</span>
+                <span class="section-kicker">ARCHITECTURE SIMULATION · MEMORY DOMAINS, NOT CORE COUNTS</span>
                 <h3 id="workbench-title">Follow the weights to the matrix engine</h3>
-                <p>Each row traces one chip’s memory → data link → compute engine. The brighter end is the stage this simplified workload waits on.</p>
+                <p>Follow packets through RAM, controllers, caches, processing tiles, and the network. Red marks the limiting resource; green marks a faster stage. Schematics show topology, not exact die floorplans.</p>
               </div>
               <div class="workbench-actions">
                 <span class="selected-count-pill" id="selected-count" aria-live="polite">8 of 8 included</span>
@@ -98,17 +99,17 @@
                 </div>
               </fieldset>
               <div class="reference-rate-callout">
-                <span>SHARED TEACHING RATE · NOT A CHIP SPEC</span>
+                <span>OPTIONAL ROOFLINE TEACHING RATE</span>
                 <strong id="reference-rate">1,000 TFLOP/s</strong>
-                <small>Used only to illustrate matrix-work time.</small>
+                <small>Architecture math uses separate editable per-chip assumptions.</small>
               </div>
             </div>
 
             <div class="workload-equation" aria-label="Workload memory traffic, matrix work, and arithmetic intensity">
               <div class="workload-quantity">
-                <span>WEIGHT BYTES TO FEED</span>
+                <span>ALL RESIDENT WEIGHTS</span>
                 <strong id="map-weight-volume">3.5 GB</strong>
-                <small>one ideal weight stream per step</small>
+                <small>all experts must fit · active fraction controls traffic</small>
               </div>
               <span class="workload-arrow" aria-hidden="true">→</span>
               <div class="workload-quantity workload-operations">
@@ -117,7 +118,7 @@
                 <small>operations for this step</small>
               </div>
               <div class="workload-quantity workload-intensity">
-                <span>WORK PER BYTE</span>
+                <span>IDEAL WEIGHT REUSE · KV EXCLUDED</span>
                 <strong id="map-intensity">4 FLOP/byte</strong>
                 <small id="phase-note">Decode does little work per weight read.</small>
               </div>
@@ -132,18 +133,10 @@
               </div>
             </div>
 
-            <div class="lane-axis" aria-hidden="true">
-              <span>CHIP · TOGGLE INCLUSION</span>
-              <div class="lane-path-axis">
-                <span>01 · WHERE WEIGHTS LIVE</span>
-                <span>WEIGHTS MOVE RIGHT →</span>
-                <span>02 · MATRIX ENGINE</span>
-              </div>
-              <span>WHICH STAGE WAITS?</span>
-            </div>
-            <div class="silicon-lanes" id="silicon-lanes" aria-label="Eight chip data paths, compared in the same physical stages"></div>
+            <div class="simulation-key"><span class="key-hot">● LIMIT / BLOCKED</span><span class="key-fast">● FASTER / FITS</span><span>● GRAY: INTERNAL TIMING UNMODELED</span><span>▦ MEMORY OCCUPANCY</span><span>→ PACKETS / QUEUES · shared compressed time scale</span></div>
+            <div class="silicon-lanes" id="silicon-lanes" aria-label="CPU, GPU, TPU, NPU, and LPU physical architecture simulations"></div>
             <p class="selection-status" id="selection-status" aria-live="polite">All eight profiles are included in this comparison.</p>
-            <p class="workbench-caveat">Shared matrix time is a teaching estimate, not a chip spec or measured latency. Per-chip compute facts keep their own precision/scope and are not ranked together; Q4 weight storage does not imply FP4 math. Stream time uses peak/theoretical bandwidth (Groq is a manufacturer claim). Animation is a log-scaled cue, not packet timing.</p>
+            <p class="workbench-caveat">Sizing and speeds are optimistic resource estimates, not measured latency or deployment guarantees. Q4 storage does not imply FP4 math. Effective math ceilings are editable assumptions except the cited TPU BF16 peak. Ideal full sharding, estimated KV cache, and a configurable ring are modeled; attention FLOPs, expert routing, runtime support, power, and real fabric topology are not. Animation compresses stage time on a shared scale; color and numbers remain available when paused.</p>
           </section>
 
           <form class="scenario-bar" id="scenario-form" aria-label="Shared workload inputs">
@@ -152,9 +145,11 @@
                 <label for="model-size">Model size</label>
                 <output id="model-size-value" for="model-size">7 B</output>
               </div>
-              <input id="model-size" name="model-size" type="range" min="1" max="120" step="1" value="7" aria-describedby="model-size-help" />
-              <div class="range-ends"><span>1 B</span><span>120 B</span></div>
-              <p class="control-help" id="model-size-help">Billions of parameters.</p>
+              <input id="model-size" name="model-size" type="range" min="1" max="2000" step="1" value="7" aria-describedby="model-size-help" />
+              <div class="range-ends"><span>1 B</span><span>2 T</span></div>
+              <label class="exact-size-label" for="model-size-exact">Exact parameters (billions)</label>
+              <input id="model-size-exact" type="number" min="1" max="2000" step="1" value="7" />
+              <p class="control-help" id="model-size-help">Total resident parameters, including all MoE experts.</p>
             </div>
 
             <div class="control-block precision-control">
@@ -180,7 +175,7 @@
 
             <div class="control-block context-control" id="context-control">
               <div class="control-label-row">
-                <label for="context-size">Prompt tokens</label>
+                <label for="context-size">Context / prompt tokens</label>
                 <output id="context-size-value" for="context-size">512</output>
               </div>
               <input id="context-size" name="context-size" type="range" min="128" max="8192" step="128" value="512" />
@@ -198,18 +193,39 @@
                 <input id="compute-ceiling" name="compute-ceiling" type="range" min="10" max="10000" step="10" value="1000" />
                 <p>The same editable ceiling is used for every curve. It isolates memory-bandwidth effects; it is not a chip peak.</p>
                 <div class="control-label-row host-ram-row">
-                  <label for="host-ram">Reference x86 host RAM</label>
+                  <label for="host-ram">Host / CPU RAM per unit</label>
                   <output id="host-ram-value" for="host-ram">128 GB</output>
                 </div>
                 <input id="host-ram" name="host-ram" type="range" min="16" max="512" step="16" value="128" aria-describedby="host-ram-help" />
-                <p id="host-ram-help">Example system configuration; Intel and AMD families do not have one fixed RAM capacity.</p>
+                <p id="host-ram-help">Independent CPU RAM or discrete GPU offload RAM per unit. Host DDR is an assumed 102.4 GB/s reference, not a universal server specification.</p>
               </div>
             </details>
 
             <div class="working-set-chip">
-              <span>ESTIMATED WORKING SET*</span>
+              <span>WEIGHTS + RESERVE + KV</span>
               <output id="working-set-value">4.2 GB</output>
             </div>
+            <section class="cluster-controls" aria-labelledby="cluster-heading">
+              <div class="cluster-heading"><h3 id="cluster-heading">Model & cluster calculator</h3><div class="model-presets" aria-label="Model size presets"><button type="button" data-model-size="7">7B</button><button type="button" data-model-size="70">70B</button><button type="button" data-model-size="405">405B</button><button type="button" data-model-size="1000">1T</button><button type="button" data-model-size="2000">2T</button></div></div>
+              <div class="cluster-grid">
+                <label>Unit allocation<select id="units-mode"><option value="auto">Auto · minimum memory fit</option><option value="manual">Manual · explore bottlenecks</option></select></label>
+                <label>Units per architecture<input id="unit-count" type="number" min="1" max="1024" step="1" value="1" /></label>
+                <label>Target tokens/s per sequence<input id="target-rate" type="number" min="0.1" max="10000" step="0.1" value="20" /></label>
+                <label>Network bandwidth · Gbit/s<select id="network-bandwidth"><option value="0">Disconnected</option><option value="1">1 · Ethernet</option><option value="10">10 · Ethernet</option><option value="100">100 · Ethernet</option><option value="400" selected>400 · fabric assumption</option><option value="3200">3,200 · fast fabric assumption</option><option value="14400">14,400 · scale-up assumption</option></select></label>
+                <label>Network hop latency · µs<input id="network-latency" type="number" min="0" max="1000" step="0.1" value="2" /></label>
+                <label>Effective utilization · %<input id="efficiency" type="number" min="5" max="100" step="1" value="70" /></label>
+              </div>
+              <label class="check-control"><input id="host-offload" type="checkbox" /> Permit host offload on the discrete GPU path (DDR + PCIe cost)</label>
+              <p class="cluster-help">One unit = an independent memory domain/package. Auto allocates enough to fit; the target recommendation searches up to 1,024 units. Network settings apply to a teaching ring, not a vendor fabric benchmark. Prefill rates mean prompt processing, not generation.</p>
+              <details class="shape-controls"><summary>Transformer shape & MoE assumptions</summary><div class="cluster-grid">
+                <label>Shape selection<select id="shape-mode"><option value="auto">Estimated from total size</option><option value="manual">Manual shape</option></select></label>
+                <label>Transformer layers<input id="model-layers" type="number" min="1" max="512" step="1" value="32" /></label>
+                <label>Hidden width<input id="hidden-width" type="number" min="128" max="65536" step="1" value="4269" /></label>
+                <label>KV width / hidden width<select id="kv-ratio"><option value="1">1 · multi-head attention</option><option value="0.125" selected>1/8 · grouped-query assumption</option><option value="0.03125">1/32 · smaller KV</option></select></label>
+                <label>Active parameters per token · %<input id="active-fraction" type="number" min="1" max="100" step="1" value="100" /></label>
+              </div><p class="cluster-help">BF16 KV is fully sharded. Default shape is inferred, not real model metadata; override it for your model. MoE reduces ideal compute/traffic, never resident weight capacity. Attention compute, routing imbalance, and batch expert union are excluded.</p></details>
+              <p id="scenario-error" class="scenario-error" role="alert" hidden></p>
+            </section>
           </form>
 
           <details class="technical-details" id="technical-details">
@@ -294,9 +310,9 @@
                 <span aria-hidden="true">⌁</span>
                 <strong>No chips selected</strong>
                 <p>Select at least one profile to restore the Roofline comparison.</p>
-                <button type="button" id="empty-select-all">Select all eight</button>
+                <button type="button" id="empty-select-all">Select all profiles</button>
               </div>
-              <p class="comparison-note">* Working set = weights + a generic 20% reserve. KV cache and workspace are not modeled.</p>
+              <p class="comparison-note">This separate normalized Roofline uses weights + 20% reserve only. The architecture calculator above also includes estimated BF16 KV and cluster traffic.</p>
             </aside>
           </div>
           </details>
@@ -317,7 +333,7 @@
           </div>
           <div class="method-caveats">
             <article><span>01</span><h3>Precision is not interchangeable</h3><p>FP4, BF16, INT8, and FP16 peaks use different operations and cannot be ranked together.</p></article>
-            <article><span>02</span><h3>Capacity is not bandwidth</h3><p>Fit is a weight estimate with a generic reserve; KV cache and workspace are excluded.</p></article>
+            <article><span>02</span><h3>Capacity is not bandwidth</h3><p>The architecture view separates memory space, bandwidth, host bus, compute, and network. It includes estimated BF16 KV plus a generic weight reserve.</p></article>
             <article><span>03</span><h3>A peak is not a measurement</h3><p>Cache, kernel shape, runtime, interconnect, and power can change observed performance.</p></article>
           </div>
           <details class="source-details">
@@ -342,7 +358,11 @@
                   <li>Two operations per MAC; weights are fetched once and reused across the batch/prompt.</li>
                   <li>Weight estimate: parameters × bits / 8; working set: weights × 1.20.</li>
                   <li>Decode uses one token per step; prefill uses the selected prompt length.</li>
-                  <li>Attention, KV traffic, scales, dequantization, activations, kernels, and data transfers are excluded.</li>
+                  <li>The optional normalized Roofline excludes KV/communication; the architecture calculator includes estimated KV, host offload, and two ring collectives per Transformer layer.</li>
+                  <li>Architecture step time = max(memory, host DDR, bus, compute) + network. Two ops per MAC; BF16-equivalent math assumptions are editable independently of weight format.</li>
+                  <li>Auto shape: layers ≈ 32 × (P/7B)^0.25; hidden width ≈ sqrt(P/(12 × layers)). BF16 KV = 2 × layers × hidden × KV ratio × 2 bytes × context × batch.</li>
+                  <li>Attention FLOPs, operator compatibility, cache/kernel efficiency, expert routing, and real-world topology are excluded. Unit counts are mathematical bounds, not validated deployments.</li>
+                  <li><a href="https://jax-ml.github.io/scaling-book/inference/" target="_blank" rel="noreferrer">Google DeepMind scaling book — inference / KV / model sharding</a> · <a href="https://jax-ml.github.io/scaling-book/sharding/" target="_blank" rel="noreferrer">Sharding and collective communication</a></li>
                   <li>Intel/AMD bandwidths are theoretical DDR limits. B200 per-GPU values are derived from an eight-GPU DGX system.</li>
                   <li>Groq’s source claims over 80 TB/s SRAM bandwidth but does not state usable capacity; fit remains Unknown.</li>
                 </ul>
