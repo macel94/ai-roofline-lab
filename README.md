@@ -18,9 +18,14 @@ Groq is retained as a **published first-generation GroqChip 1** reference: 220 M
 
 The site requires no account, backend, API key, or runtime network service. Source links are optional and open only when clicked.
 
+## Reproducible builds
+
+Node/npm, every npm package, each GitHub Action, and the Playwright browser/OS image are pinned. CI installs only from `package-lock.json` and runs tests in a digest-pinned container. See [the reproducibility record](docs/build-reproducibility.md).
+
 ## Run locally
 
 ```sh
+nvm use # Node 24.19.0 and bundled npm 11.17.0
 npm ci
 npm run dev
 ```
@@ -56,6 +61,7 @@ The launcher pins its engine version and checksum-verifies downloads. This is de
 - [Technical design and model](docs/technical-design.md)
 - [Research, sources, and data qualifications](docs/research.md)
 - [Test and deployment plan](docs/test-plan.md)
+- [Build and CI reproducibility pins](docs/build-reproducibility.md)
 - [Decision log and parallel reviews](docs/decision-log.md)
 
 The architecture-calculator revision responds to feedback that a generic graph did not locate bottlenecks within the physical hardware.

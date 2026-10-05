@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": "24.19.0",
+    "npm": "11.17.0"
+  },
   "description": "Interactive static TypeScript silicon data-path and Roofline lab for AI hardware.",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
