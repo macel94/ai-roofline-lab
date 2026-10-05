@@ -194,6 +194,7 @@ test.describe("Physical architecture simulation and calculator", () => {
     await page.locator("#motion-toggle").click();
     await expect(packet).toHaveCSS("animation-play-state", "paused");
     await page.locator("#motion-toggle").click();
+    await page.locator(".physical-viewport").first().scrollIntoViewIfNeeded();
     await expect(packet).toHaveCSS("animation-play-state", "running");
     await page.evaluate(() => {
       Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });

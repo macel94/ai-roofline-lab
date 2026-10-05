@@ -272,6 +272,7 @@ function render(): void {
     state,
     architectureResults,
     chipOverrides,
+    !motionPreference.matches && !userPausedMotion && document.visibilityState === "visible",
   );
   if (mapObserver) {
     mapObserver.disconnect();
@@ -331,6 +332,9 @@ function renderControls(hasHostProfile: boolean): void {
   contextOutput.value = formatNumber(state.contextTokens, 0);
   computeOutput.value = `${formatNumber(state.computeCeilingTFLOPS, 0)} TFLOP/s`;
   hostRamOutput.value = `${formatNumber(state.hostRamGB, 0)} GB`;
+  for (const preset of scenarioForm.querySelectorAll<HTMLButtonElement>("button[data-model-size]")) {
+    preset.setAttribute("aria-pressed", String(Number(preset.dataset.modelSize) === state.modelParamsBillion));
+  }
 
   contextInput.disabled = false;
   contextControl.classList.remove("is-disabled");
@@ -403,18 +407,20 @@ function toggleMotion(): void {
 }
 
 function updateMotionControl(): void {
+  const requestedPlaying = !userPausedMotion && !motionPreference.matches;
   const playing =
-    !userPausedMotion &&
-    !motionPreference.matches &&
+    requestedPlaying &&
     document.visibilityState === "visible" &&
     mapInViewport;
   siliconWorkbench.classList.toggle("is-paused", !playing);
   document.body.classList.toggle("motion-paused", !playing);
-  motionToggle.setAttribute("aria-pressed", String(playing));
+  // The control reflects the user's preference, not the offscreen scheduler.
+  motionToggle.setAttribute("aria-pressed", String(requestedPlaying));
+  motionToggle.disabled = motionPreference.matches;
   motionToggleLabel.textContent = motionPreference.matches
     ? "Reduced motion is on"
-    : playing
+    : requestedPlaying
       ? "Pause data flow"
       : "Resume data flow";
-  if (motionIcon) motionIcon.textContent = playing ? "Ⅱ" : "▶";
+  if (motionIcon) motionIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${requestedPlaying ? "M8 5v14M16 5v14" : "M7 4l14 8-14 8Z"}"/></svg>`;
 }

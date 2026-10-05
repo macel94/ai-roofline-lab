@@ -31,6 +31,18 @@ npm run test:e2e
 
 `npm run test:e2e` builds `dist/` and runs Playwright against the static output served with `vite preview`.
 
+## Design tooling
+
+Impeccable is installed project-locally in [`.pi/skills/impeccable`](.pi/skills/impeccable/SKILL.md), using the official `npx impeccable@4.1.0 install --providers=pi --scope=project` installer. The skill guidance and launchers are tracked; downloaded platform engines are ignored. Reload Pi to discover `/impeccable polish`, `distill`, `animate`, `colorize`, and `delight`.
+
+Run the installed detector with:
+
+```sh
+.pi/skills/impeccable/scripts/impeccable detect --json index.html src/styles.css src/architecture.css src/visuals
+```
+
+The launcher pins its engine version and checksum-verifies downloads. This is development tooling, not a website dependency. Fonts are self-hosted under `public/fonts` with their license; the site makes no runtime external font requests. See [the readability and polish plan](docs/design-polish-plan.md).
+
 ## Project documentation
 
 - [Implementation plan, equations, and verification](docs/architecture-simulation-plan.md)

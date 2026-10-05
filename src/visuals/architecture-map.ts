@@ -10,7 +10,7 @@ export function physicalMap(profile: ArchitectureProfile, result: ArchitectureRe
   const { kind, sharedMemory } = result.architecture;
   const resourceClass = (resource: Resource) => result.bottleneck === resource ? "hot" : result.blockedReason ? "idle" : "fast";
   const component = (x: number, y: number, w: number, h: number, label: string, sub: string, resource: Resource, body = "", modeled = true) =>
-    `<g class="physical-component ${modeled ? resourceClass(resource) : "unmodeled"}" data-resource="${resource}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/><text x="${x + 10}" y="${y + 22}">${label}</text><text class="physical-sub" x="${x + 10}" y="${y + 40}">${sub}</text>${body}${modeled && result.bottleneck === resource && h > 70 ? `<text class="physical-limit" x="${x + 10}" y="${y + h - 10}">▲ ${result.blockedReason ? "BLOCKED" : "LIMIT"}</text>` : ""}</g>`;
+    `<g class="physical-component ${modeled ? resourceClass(resource) : "unmodeled"}" data-resource="${resource}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/><text x="${x + 10}" y="${y + 22}">${label}</text><text class="physical-sub" x="${x + 10}" y="${y + 40}">${sub}</text>${body}${modeled && result.bottleneck === resource && h > 70 ? `<text class="physical-limit" x="${resource === "compute" ? x + w - 10 : x + 10}" y="${resource === "compute" ? y + 22 : y + h - 10}" text-anchor="${resource === "compute" ? "end" : "start"}">▲ ${result.blockedReason ? "BLOCKED" : "LIMIT"}</text>` : ""}</g>`;
   const occupancy = result.capacityFraction;
   const occupied = occupancy === null ? 0 : Math.min(20, Math.ceil(occupancy * 20));
   const bankCells = (x: number, y: number, columns = 4, used = occupied, overflow = occupancy !== null && occupancy > 1) => Array.from({ length: 20 }, (_, i) =>
@@ -80,7 +80,7 @@ export function physicalMap(profile: ArchitectureProfile, result: ArchitectureRe
   const computeMs = result.stages.find(stage => stage.resource === "compute")!.ms;
   const duty = result.stepMs === null ? 0 : computeMs / result.stepMs * 100;
   const boundary = Math.min(99.99, Math.max(0.01, duty));
-  const activity = `<style>@keyframes compute-${profile.id}{0%,${boundary.toFixed(4)}%{opacity:1}${(boundary + 0.001).toFixed(4)}%,100%{opacity:.22}}.physical-map[data-chip="${profile.id}"] .processor-cell{animation-name:compute-${profile.id}}</style>`;
+  const activity = `<style>@keyframes compute-${profile.id}{0%,${boundary.toFixed(4)}%{opacity:1}${(boundary + 0.001).toFixed(4)}%,100%{opacity:.22}}.physical-map[data-chip="${profile.id}"] .processor-cell > rect:not(.tile-cache):not(.systolic-cell){animation-name:compute-${profile.id}}</style>`;
   return `<svg class="physical-map${result.blockedReason ? " is-blocked" : ""}" data-chip="${profile.id}" data-compute-duty="${duty}" viewBox="0 0 1000 290" role="img" aria-labelledby="map-title-${profile.id} map-desc-${profile.id}" data-kind="${kind}">
     <title id="map-title-${profile.id}">${profile.name} physical architecture</title>
     <desc id="map-desc-${profile.id}">Symbolic ${kind.toUpperCase()} architecture. ${RESOURCE_LABELS[result.bottleneck]} is the limiting resource. Memory occupancy ${memoryCaption}. Cache and internal fabric stages aggregate memory bandwidth, not independently measured limits.</desc>

@@ -23,6 +23,7 @@ export function renderSiliconMap(
   input: ClusterInput,
   architectureResults: ReadonlyMap<string, ArchitectureResult>,
   overrides: ReadonlyMap<string, ChipOverride>,
+  animateChanges = false,
 ): void {
   const reference = results.get(profiles[0]?.id ?? "");
   const active = input.activeFraction;
@@ -49,6 +50,13 @@ export function renderSiliconMap(
     : "All physical architectures remain visible. Include a chip to compare its memory space, bus, math, and network constraints.";
 
   const openDetails = new Set(Array.from(targets.lanes.querySelectorAll<HTMLDetailsElement>("details[open]")).map(d => d.dataset.chipId));
+  const previous = new Map(Array.from(targets.lanes.querySelectorAll<HTMLElement>(".architecture-lane")).map(lane => [
+    lane.dataset.profileId,
+    {
+      scrollLeft: lane.querySelector(".physical-viewport")?.scrollLeft ?? 0,
+      bars: Array.from(lane.querySelectorAll<HTMLElement>(".occupancy-fill, .resource-bar i")).map(bar => parseFloat(bar.style.width)),
+    },
+  ] as const));
   const scale = Math.max(0.001, ...selected.flatMap(r => r.stages.map(s => s.ms)));
   const fragment = document.createDocumentFragment();
   for (const profile of profiles) {
@@ -60,6 +68,22 @@ export function renderSiliconMap(
     fragment.append(lane);
   }
   targets.lanes.replaceChildren(fragment);
+  for (const lane of targets.lanes.querySelectorAll<HTMLElement>(".architecture-lane")) {
+    const before = previous.get(lane.dataset.profileId);
+    if (!before) continue;
+    const viewport = lane.querySelector<HTMLElement>(".physical-viewport");
+    if (viewport) viewport.scrollLeft = before.scrollLeft;
+    if (!animateChanges || lane.classList.contains("is-excluded") || lane.dataset.blocked === "true") continue;
+    for (const [index, bar] of Array.from(lane.querySelectorAll<HTMLElement>(".occupancy-fill, .resource-bar i")).entries()) {
+      const from = before.bars[index] ?? 0;
+      const to = parseFloat(bar.style.width);
+      const bounds = bar.getBoundingClientRect();
+      if (to <= 0 || Math.abs(from - to) < 0.1 || bounds.bottom < 0 || bounds.top > window.innerHeight) continue;
+      bar.animate([{ transform: `scaleX(${from / to})` }, { transform: "scaleX(1)" }], {
+        duration: 220, easing: "cubic-bezier(.16, 1, .3, 1)",
+      });
+    }
+  }
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -109,12 +133,12 @@ function createLane(profile: ArchitectureProfile, result: ArchitectureResult, in
     `${f(result.workingSetGB / result.units, 2)} / ${f(result.capacityGB, 1)} GB per unit (${f((result.capacityFraction ?? 0) * 100, 1)}%)`;
   capacity.append(el("strong", "lane-fit", capacityText), occupancy,
     el("small", "", `${f(result.weightsGB, 2)} GB weights + 20% reserve + ${f(result.kvGB, 2)} GB BF16 KV across the system`));
-  physical.append(viewport, capacity);
+  physical.append(viewport, el("p", "schematic-scroll-hint", "Scroll to follow the full path →"), capacity);
 
   const detail = el("div", "lane-detail");
   const verdict = el("div", "lane-verdict");
   verdict.dataset.bottleneck = result.bottleneck;
-  verdict.append(el("span", "lane-verdict-label", !included ? "EXCLUDED FROM COMPARISON" : result.blockedReason ? "CANNOT RUN THIS CONFIGURATION" : "LIMITING PHYSICAL RESOURCE"),
+  verdict.append(el("span", "lane-verdict-label", !included ? "Excluded from comparison" : result.blockedReason ? "Cannot run this configuration" : "Limiting physical resource"),
     el("strong", "", RESOURCE_LABELS[result.bottleneck]));
   const speed = el("strong", "simulation-speed", result.tokensPerSecond === null ? "Blocked / unknown" : `${f(result.tokensPerSecond, 2)} tokens/s`);
   speed.dataset.rate = result.tokensPerSecond === null ? "unknown" : String(result.tokensPerSecond);

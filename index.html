@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080d16" />
+    <meta name="theme-color" content="#111923" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta
       name="description"
@@ -28,53 +28,44 @@
             </svg>
           </span>
           <span class="brand-wordmark">AI SILICON<span> / LAB</span></span>
-          <span class="brand-index">01</span>
         </a>
         <nav class="main-nav" aria-label="Main navigation">
           <a href="#simulator">Simulator <span>↘</span></a>
           <a href="#method">Method & sources <span>↗</span></a>
         </nav>
-        <div class="topbar-status" aria-label="Static client-side demo, no login required">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>CLIENT-SIDE · NO LOGIN</span>
-        </div>
       </header>
 
       <main id="top">
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-copy">
-            <p class="eyebrow"><span class="eyebrow-line"></span> AI HARDWARE · FOLLOW THE WEIGHTS</p>
-            <h1 id="hero-title">Why does AI <em>wait?</em></h1>
+            <h1 id="hero-title">Why does AI <span>wait?</span></h1>
             <p class="hero-intro">See where model weights live, how they reach the matrix engine, and which stage becomes the bottleneck.</p>
           </div>
           <div class="hero-signal" role="img" aria-label="Model weights move from memory through a data path into a matrix engine">
-            <div class="hero-path-node"><span>01 · STORAGE</span><strong>WEIGHTS</strong><small>memory</small></div>
-            <div class="hero-path-link" aria-hidden="true"><i></i><i></i><i></i><span>DATA FEED →</span></div>
-            <div class="hero-path-node hero-engine-node"><span>02 · WORK</span><strong>MATRIX</strong><small>engine</small></div>
+            <div class="hero-path-node"><span>Stored in memory</span><strong>Weights</strong><small>waiting to be read</small></div>
+            <div class="hero-path-link" aria-hidden="true">→</div>
+            <div class="hero-path-node"><span>Used in compute</span><strong>Matrix engine</strong><small>waiting to be fed</small></div>
           </div>
         </section>
 
         <section class="simulator" id="simulator" aria-labelledby="simulator-title">
           <div class="simulator-heading">
             <div>
-              <p class="eyebrow"><span class="eyebrow-line"></span> SHARED SILICON SPACE · 01</p>
-              <h2 id="simulator-title">Physical architectures. <em>Visible bottlenecks.</em></h2>
+              <h2 id="simulator-title">Find the bottleneck</h2>
             </div>
             <div class="simulator-heading-actions">
-              <span class="live-pill"><span class="status-dot" aria-hidden="true"></span> LIVE · LOCAL MODEL</span>
-              <button class="reset-button" id="reset-scenario" type="button">Reset scenario <span aria-hidden="true">↺</span></button>
+              <button class="reset-button" id="reset-scenario" type="button">Reset scenario <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></svg></button>
             </div>
           </div>
 
           <section class="silicon-workbench" id="silicon-workbench" aria-labelledby="workbench-title">
             <div class="workbench-heading">
               <div class="workbench-title-copy">
-                <span class="section-kicker">ARCHITECTURE SIMULATION · MEMORY DOMAINS, NOT CORE COUNTS</span>
-                <h3 id="workbench-title">Follow the weights to the matrix engine</h3>
+                <h3 id="workbench-title">Compare the data paths</h3>
                 <p>Follow packets through RAM, controllers, caches, processing tiles, and the network. Red marks the limiting resource; green marks a faster stage. Schematics show topology, not exact die floorplans.</p>
               </div>
               <div class="workbench-actions">
-                <span class="selected-count-pill" id="selected-count" aria-live="polite">8 of 8 included</span>
+                <span class="selected-count-pill" id="selected-count" aria-live="polite">9 of 9 included</span>
                 <button id="select-all-profiles" type="button">Select all</button>
                 <button id="clear-profiles" type="button">Clear all</button>
                 <button class="motion-toggle" id="motion-toggle" type="button" aria-pressed="true">
@@ -90,52 +81,45 @@
                 <div class="phase-options">
                   <label class="phase-option">
                     <input type="radio" name="phase" value="decode" checked />
-                    <span><b>01</b> Decode<small>make the next token</small></span>
+                    <span>Decode<small>make the next token</small></span>
                   </label>
                   <label class="phase-option">
                     <input type="radio" name="phase" value="prefill" />
-                    <span><b>02</b> Prefill<small>process prompt tokens</small></span>
+                    <span>Prefill<small>process prompt tokens</small></span>
                   </label>
                 </div>
               </fieldset>
-              <div class="reference-rate-callout">
-                <span>OPTIONAL ROOFLINE TEACHING RATE</span>
-                <strong id="reference-rate">1,000 TFLOP/s</strong>
-                <small>Architecture math uses separate editable per-chip assumptions.</small>
-              </div>
             </div>
 
             <div class="workload-equation" aria-label="Workload memory traffic, matrix work, and arithmetic intensity">
               <div class="workload-quantity">
-                <span>ALL RESIDENT WEIGHTS</span>
+                <span>Resident weights</span>
                 <strong id="map-weight-volume">3.5 GB</strong>
                 <small>all experts must fit · active fraction controls traffic</small>
               </div>
               <span class="workload-arrow" aria-hidden="true">→</span>
               <div class="workload-quantity workload-operations">
-                <span>MATRIX MULTIPLY WORK</span>
+                <span>Matrix work per step</span>
                 <strong id="map-matrix-work">14 GFLOP</strong>
                 <small>operations for this step</small>
               </div>
               <div class="workload-quantity workload-intensity">
-                <span>IDEAL WEIGHT REUSE · KV EXCLUDED</span>
+                <span>Ideal weight reuse · KV excluded</span>
                 <strong id="map-intensity">4 FLOP/byte</strong>
                 <small id="phase-note">Decode does little work per weight read.</small>
               </div>
             </div>
 
             <div class="workload-insight" id="workload-insight" aria-labelledby="insight-title">
-              <span class="insight-spark" aria-hidden="true">✳</span>
               <div>
-                <span class="section-kicker">THE “WHY” · BOTTLENECK CHANGES WITH THE WORKLOAD</span>
                 <h4 id="insight-title" aria-live="polite">Decode is a memory-feed problem</h4>
                 <p id="insight-copy">Model weights travel from memory into matrix engines. Compare the ideal feed time with the shared reference matrix-work time below.</p>
               </div>
             </div>
 
-            <div class="simulation-key"><span class="key-hot">● LIMIT / BLOCKED</span><span class="key-fast">● FASTER / FITS</span><span>● GRAY: INTERNAL TIMING UNMODELED</span><span>▦ MEMORY OCCUPANCY</span><span>→ PACKETS / QUEUES · shared compressed time scale</span></div>
+            <div class="simulation-key" aria-label="Schematic key"><span class="key-hot">Red: limiting or blocked</span><span class="key-fast">Green: faster or fits</span><span>Gray: timing unmodeled</span><span>Filled cells: memory used</span><span>Packets: shared compressed time scale</span></div>
             <div class="silicon-lanes" id="silicon-lanes" aria-label="CPU, GPU, TPU, NPU, and LPU physical architecture simulations"></div>
-            <p class="selection-status" id="selection-status" aria-live="polite">All eight profiles are included in this comparison.</p>
+            <p class="selection-status" id="selection-status" aria-live="polite">All nine profiles are included in this comparison.</p>
             <p class="workbench-caveat">Sizing and speeds are optimistic resource estimates, not measured latency or deployment guarantees. Q4 storage does not imply FP4 math. Effective math ceilings are editable assumptions except the cited TPU BF16 peak. Ideal full sharding, estimated KV cache, and a configurable ring are modeled; attention FLOPs, expert routing, runtime support, power, and real fabric topology are not. Animation compresses stage time on a shared scale; color and numbers remain available when paused.</p>
           </section>
 
@@ -184,8 +168,13 @@
             </div>
 
             <details class="advanced-control">
-              <summary>Model assumptions <span aria-hidden="true">＋</span></summary>
+              <summary>Roofline & host RAM assumptions</summary>
               <div class="advanced-content">
+                <div class="reference-rate-callout">
+                  <span>Optional Roofline teaching rate</span>
+                  <strong id="reference-rate">1,000 TFLOP/s</strong>
+                  <small>Architecture math uses separate editable per-chip assumptions.</small>
+                </div>
                 <div class="control-label-row">
                   <label for="compute-ceiling">Shared compute ceiling</label>
                   <output id="compute-ceiling-value" for="compute-ceiling">1,000 TFLOP/s</output>
@@ -202,7 +191,7 @@
             </details>
 
             <div class="working-set-chip">
-              <span>WEIGHTS + RESERVE + KV</span>
+              <span>Weights + reserve + KV</span>
               <output id="working-set-value">4.2 GB</output>
             </div>
             <section class="cluster-controls" aria-labelledby="cluster-heading">
@@ -229,12 +218,11 @@
           </form>
 
           <details class="technical-details" id="technical-details">
-            <summary><span class="section-kicker">OPTIONAL TECHNICAL LENS</span><strong>Open the Roofline chart and numeric table</strong><span aria-hidden="true">＋</span></summary>
+            <summary><strong>Open the Roofline chart and numeric table</strong></summary>
             <div class="workspace-grid">
             <section class="chart-panel" aria-labelledby="chart-heading">
               <div class="chart-panel-head">
                 <div>
-                  <span class="section-kicker">THEORETICAL UPPER BOUND · NOT A BENCHMARK</span>
                   <h3 id="chart-heading">Where the workload meets the roof</h3>
                 </div>
                 <span class="axis-unit">TFLOP/s</span>
@@ -242,22 +230,22 @@
 
               <div class="metric-row" aria-label="Shared workload metrics">
                 <div class="metric-card metric-primary">
-                  <span>ARITHMETIC INTENSITY</span>
+                  <span>Arithmetic intensity</span>
                   <strong id="intensity-value">4</strong>
                   <small>FLOP / byte</small>
                 </div>
                 <div class="metric-card">
-                  <span>INCLUDED PROFILES</span>
+                  <span>Included profiles</span>
                   <strong id="selected-count-kpi">8 / 8</strong>
                   <small>same input state</small>
                 </div>
                 <div class="metric-card">
-                  <span>MEMORY ROOF · INCLUDED</span>
+                  <span>Memory roof · included</span>
                   <strong id="roof-range-value">2.5–320</strong>
                   <small>TFLOP/s at this intensity</small>
                 </div>
                 <div class="metric-card">
-                  <span>BOTTLENECK MIX</span>
+                  <span>Bottleneck mix</span>
                   <strong class="bound-value" id="bottleneck-summary">8 memory-bound</strong>
                   <small id="fit-summary">Model fit is profile-specific</small>
                 </div>
@@ -274,7 +262,7 @@
               </figure>
 
               <div class="legend-wrap">
-                <div class="legend-heading"><span>INCLUDED PROFILES</span><span>Toggle a lane in the shared map to add/remove its curve</span></div>
+                <div class="legend-heading"><span>Included profiles</span><span>Toggle a lane in the shared map to add/remove its curve</span></div>
                 <div class="chart-legend" id="chart-legend" aria-label="Roofline series legend"></div>
               </div>
               <p class="normalization-note">
@@ -286,7 +274,6 @@
             <aside class="comparison-panel" aria-labelledby="comparison-title">
               <div class="comparison-panel-head">
                 <div>
-                  <span class="section-kicker">LIVE · SAME SCENARIO</span>
                   <h3 id="comparison-title">Chip-by-chip comparison</h3>
                 </div>
                 <span class="comparison-total" id="comparison-total">8 / 8</span>
@@ -321,23 +308,22 @@
         <section class="method-section" id="method" aria-labelledby="method-title">
           <div class="method-heading">
             <div>
-              <span class="section-kicker">MODEL NOTES · SOURCES</span>
-              <h2 id="method-title">A useful bound.<br /><em>Not a benchmark.</em></h2>
+              <h2 id="method-title">A useful bound.<br /><span>Not a benchmark.</span></h2>
             </div>
             <p>The Roofline model connects peak compute, memory bandwidth, and operations per byte. It is a useful lens, not a prediction of real-world token throughput.</p>
           </div>
           <div class="method-equation" aria-label="Attainable performance is the minimum of peak compute and memory bandwidth times arithmetic intensity">
-            <span>ATTAINABLE PERFORMANCE</span>
+            <span>Attainable performance</span>
             <div><b>P</b><sub>attainable</sub> <i>=</i> min <b>[ P</b><sub>peak</sub><b>, BW × I ]</b></div>
             <p><b>I</b> = operations / byte · <b>BW</b> = bandwidth at the stated memory level</p>
           </div>
           <div class="method-caveats">
-            <article><span>01</span><h3>Precision is not interchangeable</h3><p>FP4, BF16, INT8, and FP16 peaks use different operations and cannot be ranked together.</p></article>
-            <article><span>02</span><h3>Capacity is not bandwidth</h3><p>The architecture view separates memory space, bandwidth, host bus, compute, and network. It includes estimated BF16 KV plus a generic weight reserve.</p></article>
-            <article><span>03</span><h3>A peak is not a measurement</h3><p>Cache, kernel shape, runtime, interconnect, and power can change observed performance.</p></article>
+            <article><h3>Precision is not interchangeable</h3><p>FP4, BF16, INT8, and FP16 peaks use different operations and cannot be ranked together.</p></article>
+            <article><h3>Capacity is not bandwidth</h3><p>The architecture view separates memory space, bandwidth, host bus, compute, and network. It includes estimated BF16 KV plus a generic weight reserve.</p></article>
+            <article><h3>A peak is not a measurement</h3><p>Cache, kernel shape, runtime, interconnect, and power can change observed performance.</p></article>
           </div>
           <details class="source-details">
-            <summary>Sources, assumptions, and limits <span aria-hidden="true">＋</span></summary>
+            <summary>Sources, assumptions, and limits</summary>
             <div class="source-content">
               <div>
                 <h3>Hardware references</h3>
