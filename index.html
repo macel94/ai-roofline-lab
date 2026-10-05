@@ -104,7 +104,7 @@
                 <small>operations for this step</small>
               </div>
               <div class="workload-quantity workload-intensity">
-                <span>Ideal weight reuse · KV excluded</span>
+                <span>Ideal active-weight reuse · cache excluded</span>
                 <strong id="map-intensity">4 FLOP/byte</strong>
                 <small id="phase-note">Decode does little work per weight read.</small>
               </div>
@@ -120,7 +120,7 @@
             <div class="simulation-key" aria-label="Schematic key"><span class="key-hot">Red: limiting or blocked</span><span class="key-fast">Green: faster or fits</span><span>Gray: timing unmodeled</span><span>Filled cells: memory used</span><span>Packets: shared compressed time scale</span></div>
             <div class="silicon-lanes" id="silicon-lanes" aria-label="CPU, GPU, TPU, NPU, and LPU physical architecture simulations"></div>
             <p class="selection-status" id="selection-status" aria-live="polite">All nine profiles are included in this comparison.</p>
-            <p class="workbench-caveat">Sizing and speeds are optimistic resource estimates, not measured latency or deployment guarantees. Q4 storage does not imply FP4 math. Effective math ceilings are editable assumptions except the cited TPU BF16 peak. Ideal full sharding, estimated KV cache, and a configurable ring are modeled; attention FLOPs, expert routing, runtime support, power, and real fabric topology are not. Animation compresses stage time on a shared scale; color and numbers remain available when paused.</p>
+            <p class="workbench-caveat">Sizing and speeds are optimistic resource estimates, not measured latency or deployment guarantees. Q4 storage does not imply FP4 math. Effective math ceilings are editable assumptions except the cited TPU BF16 peak. Groq is a published first-generation reference, not current GroqCloud hardware. Ideal full sharding, model-aware cache estimates, and a configurable ring are modeled; attention FLOPs, expert routing, runtime support, power, and real fabric topology are not. Animation compresses stage time on a shared scale; color and numbers remain available when paused.</p>
           </section>
 
           <form class="scenario-bar" id="scenario-form" aria-label="Shared workload inputs">
@@ -132,7 +132,7 @@
               <input id="model-size" name="model-size" type="range" min="1" max="2000" step="1" value="7" aria-describedby="model-size-help" />
               <div class="range-ends"><span>1 B</span><span>2 T</span></div>
               <label class="exact-size-label" for="model-size-exact">Exact parameters (billions)</label>
-              <input id="model-size-exact" type="number" min="1" max="2000" step="1" value="7" />
+              <input id="model-size-exact" type="number" min="1" max="2000" step="any" value="7" />
               <p class="control-help" id="model-size-help">Total resident parameters, including all MoE experts.</p>
             </div>
 
@@ -140,6 +140,7 @@
               <label for="weight-bits">Weight format</label>
               <div class="select-wrap">
                 <select id="weight-bits" name="weight-bits">
+                  <option value="native" disabled>As released · select a named model</option>
                   <option value="4" selected>4-bit · Q4</option>
                   <option value="8">8-bit · Q8</option>
                   <option value="16">16-bit · FP16/BF16</option>
@@ -164,7 +165,9 @@
               </div>
               <input id="context-size" name="context-size" type="range" min="128" max="8192" step="128" value="512" />
               <div class="range-ends"><span>128</span><span>8,192</span></div>
-              <p class="control-help" id="context-help">Used by the idealized prefill model.</p>
+              <label for="context-exact" class="exact-size-label">Exact context / prompt tokens</label>
+              <input id="context-exact" type="number" min="128" max="1048576" step="1" value="512" />
+              <p class="control-help" id="context-help">Slider covers 128–8,192 tokens; exact input supports up to 1,048,576.</p>
             </div>
 
             <details class="advanced-control">
@@ -191,16 +194,17 @@
             </details>
 
             <div class="working-set-chip">
-              <span>Weights + reserve + KV</span>
+              <span>Weights + reserve + cache/state</span>
               <output id="working-set-value">4.2 GB</output>
             </div>
             <section class="cluster-controls" aria-labelledby="cluster-heading">
               <div class="cluster-heading"><h3 id="cluster-heading">Model & cluster calculator</h3><div class="model-presets" aria-label="Model size presets"><button type="button" data-model-size="7">7B</button><button type="button" data-model-size="70">70B</button><button type="button" data-model-size="405">405B</button><button type="button" data-model-size="1000">1T</button><button type="button" data-model-size="2000">2T</button></div></div>
+              <div class="model-picker"><label for="model-preset">Open-weight model preset</label><select id="model-preset"><option value="custom">Custom model · editable assumptions</option></select><p id="model-preset-summary" class="cluster-help"></p><details id="model-evidence" hidden><summary>Model storage & cache evidence</summary><p id="model-preset-details" class="cluster-help"></p><a id="model-source" class="lane-source" target="_blank" rel="noreferrer" hidden>Official config & checkpoint evidence ↗</a></details></div>
               <div class="cluster-grid">
                 <label>Unit allocation<select id="units-mode"><option value="auto">Auto · minimum memory fit</option><option value="manual">Manual · explore bottlenecks</option></select></label>
                 <label>Units per architecture<input id="unit-count" type="number" min="1" max="1024" step="1" value="1" /></label>
                 <label>Target tokens/s per sequence<input id="target-rate" type="number" min="0.1" max="10000" step="0.1" value="20" /></label>
-                <label>Network bandwidth · Gbit/s<select id="network-bandwidth"><option value="0">Disconnected</option><option value="1">1 · Ethernet</option><option value="10">10 · Ethernet</option><option value="100">100 · Ethernet</option><option value="400" selected>400 · fabric assumption</option><option value="3200">3,200 · fast fabric assumption</option><option value="14400">14,400 · scale-up assumption</option></select></label>
+                <label>Network bandwidth · Gbit/s<select id="network-bandwidth"><option value="0">Disconnected</option><option value="1">1 · Ethernet</option><option value="10">10 · Ethernet</option><option value="100">100 · Ethernet</option><option value="400" selected>400 · fabric assumption</option><option value="3200">3,200 · fast fabric assumption</option><option value="6400">6,400 · aggregate ICI-scale assumption</option><option value="7200">7,200 · one-way NVLink-scale assumption</option><option value="14400">14,400 · optimistic scale-up assumption</option></select></label>
                 <label>Network hop latency · µs<input id="network-latency" type="number" min="0" max="1000" step="0.1" value="2" /></label>
                 <label>Effective utilization · %<input id="efficiency" type="number" min="5" max="100" step="1" value="70" /></label>
               </div>
@@ -210,10 +214,12 @@
                 <label>Shape selection<select id="shape-mode"><option value="auto">Estimated from total size</option><option value="manual">Manual shape</option></select></label>
                 <label>Transformer layers<input id="model-layers" type="number" min="1" max="512" step="1" value="32" /></label>
                 <label>Hidden width<input id="hidden-width" type="number" min="128" max="65536" step="1" value="4269" /></label>
-                <label>KV width / hidden width<select id="kv-ratio"><option value="1">1 · multi-head attention</option><option value="0.125" selected>1/8 · grouped-query assumption</option><option value="0.03125">1/32 · smaller KV</option></select></label>
-                <label>Active parameters per token · %<input id="active-fraction" type="number" min="1" max="100" step="1" value="100" /></label>
-              </div><p class="cluster-help">BF16 KV is fully sharded. Default shape is inferred, not real model metadata; override it for your model. MoE reduces ideal compute/traffic, never resident weight capacity. Attention compute, routing imbalance, and batch expert union are excluded.</p></details>
+                <label>KV ratio helper · sets width<select id="kv-ratio"><option value="1">1 · multi-head attention</option><option value="0.125" selected>1/8 · grouped-query assumption</option><option value="0.03125">1/32 · smaller KV</option></select></label>
+                <label>KV width per K / V · channels<input id="kv-width" type="number" min="1" max="65536" step="1" value="534" /></label>
+                <label>Active parameters per token · %<input id="active-fraction" type="number" min="0.01" max="100" step="any" value="100" /></label>
+              </div><p class="cluster-help">Named presets use their sourced cache layouts; their KV width is a readout (a single ratio cannot describe hybrid/MLA/CSA2). Shape, KV, or active-fraction edits switch to a custom BF16 GQA cache. Custom KV width is independent of hidden width. Caches are ideally sharded. MoE never reduces resident capacity. Attention compute, routing imbalance and batch expert union are excluded.</p></details>
               <p id="scenario-error" class="scenario-error" role="alert" hidden></p>
+              <section class="planning-shortlist" aria-labelledby="planning-heading"><h4 id="planning-heading">Paths to your target</h4><p id="planning-summary" class="cluster-help" aria-live="polite"></p><div id="planning-results"></div><p class="cluster-help">Compare resource bounds, then verify runtime/operator support and legal cluster shapes. Counts are not validated deployments. Native mixed-format traffic uses a conservative BF16 active-weight allowance. Network rate is usable per-rank one-way bandwidth—not summed ports or bidirectional marketing bandwidth.</p></section>
             </section>
           </form>
 
@@ -299,7 +305,7 @@
                 <p>Select at least one profile to restore the Roofline comparison.</p>
                 <button type="button" id="empty-select-all">Select all profiles</button>
               </div>
-              <p class="comparison-note">This separate normalized Roofline uses weights + 20% reserve only. The architecture calculator above also includes estimated BF16 KV and cluster traffic.</p>
+              <p class="comparison-note">This separate normalized Roofline uses weights + 20% reserve only. The architecture calculator above also includes the selected cache layout, active work and cluster traffic. Native storage uses checkpoint bytes here too; this Roofline still treats the workload as dense and excludes cache/routing.</p>
             </aside>
           </div>
           </details>
@@ -319,7 +325,7 @@
           </div>
           <div class="method-caveats">
             <article><h3>Precision is not interchangeable</h3><p>FP4, BF16, INT8, and FP16 peaks use different operations and cannot be ranked together.</p></article>
-            <article><h3>Capacity is not bandwidth</h3><p>The architecture view separates memory space, bandwidth, host bus, compute, and network. It includes estimated BF16 KV plus a generic weight reserve.</p></article>
+            <article><h3>Capacity is not bandwidth</h3><p>The architecture view separates memory space, bandwidth, host bus, compute, and network. It includes the selected cache/state layout plus a generic weight reserve.</p></article>
             <article><h3>A peak is not a measurement</h3><p>Cache, kernel shape, runtime, interconnect, and power can change observed performance.</p></article>
           </div>
           <details class="source-details">
@@ -335,14 +341,14 @@
                   <li><a href="https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x.html" target="_blank" rel="noreferrer">AMD — Ryzen 9 9950X</a></li>
                   <li><a href="https://www.nvidia.com/en-us/data-center/dgx-b200/" target="_blank" rel="noreferrer">NVIDIA — DGX B200 system totals</a></li>
                   <li><a href="https://docs.cloud.google.com/tpu/docs/v6e" target="_blank" rel="noreferrer">Google Cloud — TPU v6e</a></li>
-                  <li><a href="https://groq.com/lpu/" target="_blank" rel="noreferrer">Groq — What is a Language Processing Unit?</a></li>
+                  <li>Groq — first-generation TSP / Hot Chips 34 (2022), linked in its chip evidence panel.</li>
                 </ul>
               </div>
               <div>
                 <h3>Workload assumptions</h3>
                 <ul>
                   <li>Two operations per MAC; weights are fetched once and reused across the batch/prompt.</li>
-                  <li>Weight estimate: parameters × bits / 8; working set: weights × 1.20.</li>
+                  <li>Weight estimate: parameters × bits / 8; architecture working set: weights × 1.20 + selected cache/state.</li>
                   <li>Decode uses one token per step; prefill uses the selected prompt length.</li>
                   <li>The optional normalized Roofline excludes KV/communication; the architecture calculator includes estimated KV, host offload, and two ring collectives per Transformer layer.</li>
                   <li>Architecture step time = max(memory, host DDR, bus, compute) + network. Two ops per MAC; BF16-equivalent math assumptions are editable independently of weight format.</li>
@@ -350,7 +356,8 @@
                   <li>Attention FLOPs, operator compatibility, cache/kernel efficiency, expert routing, and real-world topology are excluded. Unit counts are mathematical bounds, not validated deployments.</li>
                   <li><a href="https://jax-ml.github.io/scaling-book/inference/" target="_blank" rel="noreferrer">Google DeepMind scaling book — inference / KV / model sharding</a> · <a href="https://jax-ml.github.io/scaling-book/sharding/" target="_blank" rel="noreferrer">Sharding and collective communication</a></li>
                   <li>Intel/AMD bandwidths are theoretical DDR limits. B200 per-GPU values are derived from an eight-GPU DGX system.</li>
-                  <li>Groq’s source claims over 80 TB/s SRAM bandwidth but does not state usable capacity; fit remains Unknown.</li>
+                  <li>GroqChip 1 uses published 220 MB SRAM and a 55 TB/s aggregate claim (Hot Chips 34, slide 22), not modern GroqCloud specifications. Its math remains assumed. SRAM instructions/workspace, compiler support and custom networking can further restrict fit.</li>
+                  <li>Named models link revision-pinned official configs. Released storage comes from checkpoint index bytes; uniform precision means a theoretical repack. Qwen hybrid state, sliding windows, MLA and DeepSeek CSA2 are modeled explicitly. Native traffic is conservatively bounded by BF16 active weights.</li>
                 </ul>
               </div>
             </div>

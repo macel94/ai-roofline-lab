@@ -9,6 +9,9 @@
 - `tests/architecture.spec.ts`: resource sizing, KV/MoE, 2T Q4/BF16, capacity boundaries, offload, host/local memory constraints, Gbit/s conversion, ring payload/hop latency, blocked/unknown states, target-search limits, and invalid inputs.
 - `tests/demo.spec.ts`: actual built static UI in Chromium, distinct physical schematics, hotspots, exact/preset size, unit allocation, network/offload, shape/MoE, per-chip overrides, error recovery, selection/reset, keyboard, optional Roofline, motion and responsive layouts.
 
+- `tests/presets.spec.ts`: six official config fixtures, native vs repacked storage, phase-specific work, hybrid/sliding/MLA/CSA2 cache math, context limits, preset/custom transitions, retained cluster settings, hardware audit corrections and network-budget inversion.
+- `tests/design.spec.ts`: typography, contrast, control targets, keyboard/motion, schematic-scroll retention and resized-text reflow.
+
 ## Required numerical checks
 
 1. 2T Q4 raw weights = 1,000 decimal GB, working set = 1,200 GB + estimated BF16 KV; default B200 memory floor = 7 units.
@@ -23,7 +26,7 @@
 ## Browser checks
 
 - Nine physical schematics; accessible CPU/GPU/TPU/NPU/LPU type names and architecture-specific internal blocks. TPU has two representative MXUs with systolic cells.
-- Default known paths are memory-limited; prefill moves processing tiles into the hotspot. Tile duty is derived from math/step time.
+- Default CPU/GPU/TPU/NPU paths are memory-limited; first-generation Groq requires many small SRAM domains and is network-limited; prefill moves processing tiles into the hotspot. Tile duty is derived from math/step time.
 - Manual OOM → explicit weight offload → red PCIe bus; slow/disconnected network → red peer link. Oversized host RAM/working set does not hide feasibility constraints.
 - Error messages retain last valid diagrams and clear when returning to the same valid input; blur/change does not invalidate pending disclosure clicks.
 - Per-chip assumptions explicitly distinguish default/vendor/user evidence, preserve disclosure/focus after applying, and reset to defaults.
@@ -55,4 +58,4 @@ No new third-party runtime dependency is introduced. Expected bundle budget rema
 
 ## Verification record
 
-Results for this revision are recorded in [architecture-simulation-plan.md](architecture-simulation-plan.md). Historical generic-map test results are superseded, not reused as evidence for this calculator.
+Original architecture results are recorded in [architecture-simulation-plan.md](architecture-simulation-plan.md); current preset/audit verification is in [model-hardware-audit-plan.md](model-hardware-audit-plan.md). Historical generic-map test results are superseded, not reused as evidence for this calculator.

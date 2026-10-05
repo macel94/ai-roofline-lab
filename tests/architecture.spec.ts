@@ -41,6 +41,8 @@ test.describe("Physical resource model and sizing", () => {
     expect(r.blockedReason).toContain("Memory capacity exceeded");
     expect(r.tokensPerSecond).toBeNull();
     expect(r.capacityFraction).toBeGreaterThan(1);
+    expect(r.stages.find(s => s.resource === "host")!.ms).toBe(0);
+    expect(r.stages.find(s => s.resource === "bus")!.ms).toBe(0);
   });
   test("context affects decode KV size and memory time", () => {
     const a = calc({ contextTokens: 128 });
@@ -67,7 +69,7 @@ test.describe("Physical resource model and sizing", () => {
   test("resident GPU weights do not cross PCIe on every token; first load remains visible", () => {
     const r = calc();
     expect(r.stages.find(s => s.resource === "bus")!.ms).toBe(0);
-    expect(r.loadMs).toBeCloseTo(3.5 / (64 * 0.7) * 1000);
+    expect(r.loadMs).toBeCloseTo(3.5 / (r.architecture.busGBs! * 0.7) * 1000);
   });
   test("offload turns a capacity failure into a PCIe wall", () => {
     const r = calc({ modelParamsBillion: 405, unitsMode: "manual", units: 1, offload: true });
@@ -75,7 +77,7 @@ test.describe("Physical resource model and sizing", () => {
     expect(r.blockedReason).toBeNull();
     expect(r.bottleneck).toBe("bus");
     expect(r.stages.find(s => s.resource === "bus")!.ms).toBeGreaterThan(r.stages[0]!.ms);
-    const expected = r.spillGB / (64 * 0.7) * 1000;
+    const expected = r.spillGB / (r.architecture.busGBs! * 0.7) * 1000;
     expect(r.stages.find(s => s.resource === "bus")!.ms).toBeCloseTo(expected, 10);
   });
   test("host RAM capacity also bounds offload", () => {
@@ -93,6 +95,8 @@ test.describe("Physical resource model and sizing", () => {
       expect(r.architecture.busGBs).toBeNull();
       expect(r.blockedReason).toContain("cannot use modeled host offload");
       expect(r.loadMs).toBeNull();
+      expect(r.stages.find(s => s.resource === "host")!.ms).toBe(0);
+      expect(r.stages.find(s => s.resource === "bus")!.ms).toBe(0);
     }
   });
   test("one unit never pays network costs, even disconnected", () => {
@@ -122,7 +126,7 @@ test.describe("Physical resource model and sizing", () => {
     expect(b.stages.find(s => s.resource === "network")!.ms).toBeGreaterThan(190);
   });
   test("prefill shifts the default known paths from memory to compute", () => {
-    for (const p of HARDWARE_PROFILES.filter(p => p.capacityMode !== "unknown")) {
+    for (const p of HARDWARE_PROFILES.filter(p => p.id !== "groq-lpu")) {
       const a = calculateArchitecture(input(), p);
       const b = calculateArchitecture(input({ phase: "prefill" }), p);
       expect(a.bottleneck).toBe("memory");
@@ -131,7 +135,7 @@ test.describe("Physical resource model and sizing", () => {
     }
   });
   test("unknown capacity never becomes a fabricated minimum or recommendation", () => {
-    const r = calc({}, "groq-lpu");
+    const r = calculateArchitecture(input(), { ...getProfile("groq-lpu")!, capacityMode: "unknown", capacityGB: null });
     expect(r.minimumUnits).toBeNull();
     expect(r.targetUnits).toBeNull();
     expect(r.targetStatus).toBe("unknown");

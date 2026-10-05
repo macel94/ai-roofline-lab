@@ -1,6 +1,6 @@
 # Product specification — physical architecture simulation
 
-**Version:** 0.4 · October 5, 2026. Supersedes the generic map's eight-profile/shared-math requirements.
+**Version:** 0.5 · October 5, 2026. Supersedes the generic map's eight-profile/shared-math requirements.
 
 ## Goal
 
@@ -18,7 +18,7 @@ The product is a static, unauthenticated educational resource simulator, not an 
 | Calculate how many units are needed | Auto memory floor, manual counts, and first feasible target rate across 1–1,024 independent memory domains. Unknown capacity remains unknown; unreached targets are explicit. |
 | Understand network impact | Configurable Gbit/s and hop latency; one unit has zero collectives, a disconnected multi-unit model is blocked, high latency can make additional units slower. |
 | Understand host-bus costs | Resident GPU weights incur no recurring PCIe traffic. Explicit offload charges DDR/PCIe and checks host/local KV capacity. UMA paths do not invent a PCIe copy. |
-| Configure real model metadata | Manual layers/hidden width, BF16 KV width ratio, batch, context, weight precision, active parameter fraction. Default inferred shape is clearly labeled. |
+| Configure real model metadata | Six sourced open-weight presets fill storage, layers/hidden/KV width, active work and cache layout. Custom shape/KV width, batch/context, precision and active fraction remain editable. Native mixed formats and theoretical repacks are distinguished. |
 | Review assumptions | Sourced memory facts, separate vendor TPU BF16 peak and illustrative math ceilings, per-chip math/capacity overrides, source links and explicit scope limitations. |
 | Use keyboard/mobile/reduced motion | Focusable controls/SVG scroll areas, accessible names, non-color bottleneck labels, 360px–desktop without document overflow, pause/hidden/offscreen/reduced-motion handling. |
 
@@ -30,7 +30,10 @@ Each story is bounded, independently testable against the pure model, valuable t
 - Shared controls appear before the long schematic list. Every selected architecture receives identical workload/network assumptions; each chip uses a separately qualified math ceiling.
 - Toggling inclusion only changes that architecture's technical comparison and active scaling context. Excluded physical schematics remain visible and dimmed, without motion. Clear/select-all/reset have explicit behavior.
 - Defaults: 7B Q4, batch 1, decode, context 512, host/CPU RAM 128 GB, inferred shape/GQA ratio 1/8, active fraction 100%, auto memory fit, 400 Gbit/s, 2 µs hop latency, 70% efficiency, target 20 tokens/s per sequence.
-- Capacity includes weights × 1.2 + BF16 KV. Counts mean independently provisioned memory domains, not cores in a shared pool.
+- Named presets preserve phase/batch/context/target/cluster settings; shape/KV/active edits detach sourced special-cache rules. DeepSeek V4.1 uses 8B active prefill / 16B decode. Context beyond config limits is warned.
+- A target shortlist reports modeled counts, memory/bus/fabric conditions and supports explicit manual exploration; it does not rank price or validate runtime support.
+- Groq is a published first-generation reference, not current GroqCloud hardware. Intel representative memory figures remain qualified after blocked retrieval.
+- Capacity includes weights × 1.2 + selected cache/state. Counts mean independently provisioned memory domains, not cores in a shared pool.
 - If execution is infeasible, show the cause and no throughput. If a required hardware value is unpublished, preserve unknown rather than silently inventing it.
 - Decode and prefill must visibly change work and bottleneck placement; prefill token rates must be labeled prompt processing, not generated-token speed.
 - Quantized weight storage must not imply quantized arithmetic. Illustrative math defaults and user overrides must not be presented as manufacturer facts.
@@ -49,4 +52,5 @@ No measured latency/energy/cost, deployment runtime validation, NPU operator gua
 - [x] Distinct physical architecture schematics and resource-driven hotspots/motion.
 - [x] 2T workload range, network, KV/MoE, offload, per-chip overrides and unit/target calculator.
 - [x] Strict build and all numerical/browser tests pass repeatedly; screenshots reviewed.
-- [x] Changes committed/pushed to the owning repository; Pages workflow and live behavior verified.
+- [x] Historical architecture/design deliveries were committed, pushed and live-verified.
+- [ ] This model-preset revision requires user-authorized publication before claiming it is live.

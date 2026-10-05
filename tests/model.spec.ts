@@ -129,14 +129,15 @@ test.describe("Roofline domain model", () => {
     expect(result.fit).toBe("does-not-fit");
   });
 
-  test("keeps unpublished Groq capacity unknown", () => {
+  test("uses a sourced first-generation Groq capacity, not an unnamed current LPU", () => {
     const groq = getProfile("groq-lpu");
     expect(groq).toBeDefined();
     if (!groq) return;
 
     const result = calculateScenario(input({ modelParamsBillion: 70 }), groq);
-    expect(result.memoryCeilingTFLOPS).toBe(320);
-    expect(result.fit).toBe("unknown");
+    expect(result.memoryCeilingTFLOPS).toBe(220);
+    expect(result.availableCapacityGB).toBe(0.22);
+    expect(result.fit).toBe("does-not-fit");
   });
 
   test("does not invent a Roofline when bandwidth is unavailable", () => {

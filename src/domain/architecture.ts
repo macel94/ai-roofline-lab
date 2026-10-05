@@ -1,5 +1,6 @@
-import { validateScenario, type ScenarioInput } from "./model";
+import { validateScenario, weightStorageGB, type ScenarioInput } from "./model";
 import type { ArchitectureProfile } from "../data/profiles";
+import { getModelPreset, presetKVGB } from "../data/models";
 
 export type UnitKind = "cpu" | "gpu" | "tpu" | "npu" | "lpu";
 export type Resource = "capacity" | "memory" | "host" | "bus" | "compute" | "network";
@@ -18,9 +19,9 @@ export const CHIP_ARCHITECTURES: Readonly<Record<string, ChipArchitecture>> = {
   "m5-max": { kind: "gpu", mathTFLOPS: 30, mathEvidence: "Assumed effective matrix ceiling; not an Apple specification", busGBs: null, busLabel: "Shared SoC fabric · no PCIe copy", sharedMemory: true },
   "lion-cove": { kind: "cpu", mathTFLOPS: 2, mathEvidence: "Assumed effective vector ceiling; SKU/kernel dependent", busGBs: null, busLabel: "DDR controller → cache hierarchy", sharedMemory: true },
   "zen-5": { kind: "cpu", mathTFLOPS: 4, mathEvidence: "Assumed effective vector ceiling; SKU/kernel dependent", busGBs: null, busLabel: "I/O die → fabric → core chiplets", sharedMemory: true },
-  "blackwell-b200": { kind: "gpu", mathTFLOPS: 2250, mathEvidence: "Assumed dense BF16 matrix ceiling; editable, not the cited FP4 peak", busGBs: 64, busLabel: "PCIe 5 ×16 · assumed 64 GB/s one-way", sharedMemory: false },
+  "blackwell-b200": { kind: "gpu", mathTFLOPS: 2250, mathEvidence: "Assumed BF16-equivalent matrix ceiling; not a vendor BF16 spec or a conversion from FP4", busGBs: 32 * 16 / 8 * 128 / 130, busLabel: "PCIe 5 ×16 · 63.02 GB/s one-way encoding ceiling, protocol overhead excluded", sharedMemory: false },
   "tpu-v6e": { kind: "tpu", mathTFLOPS: 918, mathEvidence: "Vendor peak BF16 per chip · discounted by efficiency", busGBs: null, busLabel: "Host loading not modeled · no PCIe offload assumption", sharedMemory: false },
-  "groq-lpu": { kind: "lpu", mathTFLOPS: 100, mathEvidence: "Assumed effective matrix ceiling; not a Groq specification", busGBs: null, busLabel: "Compiler-scheduled streaming", sharedMemory: false },
+  "groq-lpu": { kind: "lpu", mathTFLOPS: 100, mathEvidence: "Assumed FP16-equivalent matrix ceiling for GroqChip 1; not BF16 support or a modern LPU spec", busGBs: null, busLabel: "Compiler-scheduled streaming", sharedMemory: false },
   "m4-npu": { kind: "npu", mathTFLOPS: 8, mathEvidence: "Assumed BF16-equivalent rate; NOT the Neural Engine TOPS claim", busGBs: null, busLabel: "Shared SoC fabric · no PCIe copy", sharedMemory: true },
 };
 
@@ -35,6 +36,7 @@ export interface ClusterInput extends ScenarioInput {
   layers: number;
   hiddenWidth: number;
   kvRatio: number;
+  kvWidth?: number; // custom per-K/per-V width; independent of hidden width
   activeFraction: number;
 }
 export interface ChipOverride { mathTFLOPS?: number; capacityGB?: number }
@@ -45,6 +47,8 @@ export interface ArchitectureResult {
   capacityGB: number | null;
   weightsGB: number;
   kvGB: number;
+  cacheLabel: string;
+  activeWeightsGB: number;
   workingSetGB: number;
   minimumUnits: number | null;
   units: number;
@@ -79,7 +83,8 @@ export function validateCluster(input: ClusterInput): string | null {
     [input.layers, 1, 512, "Layers", true],
     [input.hiddenWidth, 128, 65536, "Hidden width", true],
     [input.kvRatio, 1 / 128, 1, "KV width ratio", false],
-    [input.activeFraction, 0.01, 1, "Active parameter fraction", false],
+    ...(input.kvWidth === undefined ? [] : [[input.kvWidth, 1, 65536, "KV width", true] as [number, number, number, string, boolean]]),
+    [input.activeFraction, 0.0001, 1, "Active parameter fraction", false],
   ];
   for (const [value, min, max, name, integer] of ranges) {
     if (!Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value)))
@@ -87,6 +92,10 @@ export function validateCluster(input: ClusterInput): string | null {
   }
   if (!["auto", "manual"].includes(input.unitsMode)) return "Invalid unit-count mode.";
   if (typeof input.offload !== "boolean") return "Invalid offload mode.";
+  const model = getModelPreset(input.modelPresetId);
+  if (model && (input.modelParamsBillion !== model.paramsBillion || input.layers !== model.layers || input.hiddenWidth !== model.hiddenWidth ||
+      Math.abs(input.activeFraction - model.activeBillion[input.phase] / model.paramsBillion) > 1e-8))
+    return "Model preset metadata changed; switch to a custom model before editing shape or active parameters.";
   return null;
 }
 
@@ -104,11 +113,17 @@ export function calculateArchitecture(
     mathEvidence: override.mathTFLOPS === undefined ? original.mathEvidence : "User-supplied effective matrix ceiling" };
   if (profile.bandwidthGBs !== null && (!Number.isFinite(profile.bandwidthGBs) || profile.bandwidthGBs <= 0))
     throw new RangeError("Memory bandwidth must be positive and finite, or unknown.");
-  const capacityGB = override.capacityGB ?? (profile.capacityMode === "unknown" ? null : profile.capacityMode === "host" ? input.hostRamGB : profile.capacityGB);
+  const capacityGB = override.capacityGB ?? (profile.capacityMode === "unknown" ? null : profile.capacityMode === "host" ? Math.min(input.hostRamGB, profile.maxCapacityGB ?? Infinity) : profile.capacityGB);
   if (capacityGB !== null && (!Number.isFinite(capacityGB) || capacityGB <= 0))
     throw new RangeError("Memory capacity must be positive and finite, or unknown.");
-  const weightsGB = input.modelParamsBillion * input.weightBits / 8;
-  const kvGB = 2 * input.layers * input.hiddenWidth * input.kvRatio * 2 * input.contextTokens * input.batch / 1e9;
+  const model = getModelPreset(input.modelPresetId);
+  const weightsGB = weightStorageGB(input);
+  const kvGB = model ? presetKVGB(model, input.contextTokens, input.batch) :
+    2 * input.layers * (input.kvWidth ?? input.hiddenWidth * input.kvRatio) * 2 * input.contextTokens * input.batch / 1e9;
+  const cacheLabel = model?.cacheLabel ?? "Custom BF16 K/V cache";
+  // Mixed storage does not justify scaling all tensor bytes by one active fraction.
+  // Native traffic uses an explicit conservative BF16 active-weight allowance.
+  const activeWeightsGB = input.storageFormat === "native" ? Math.min(weightsGB, input.modelParamsBillion * input.activeFraction * 2) : weightsGB * input.activeFraction;
   const workingSetGB = weightsGB * 1.2 + kvGB;
   const minimumUnits = capacityGB === null ? null : Math.max(1, Math.ceil(workingSetGB / capacityGB));
   const units = input.unitsMode === "auto" ? Math.min(MAX_UNITS, minimumUnits ?? 1) : input.units;
@@ -128,11 +143,11 @@ export function calculateArchitecture(
     if (n > 1 && input.networkGbps === 0) {
       if (!blockedReason) { blockedReason = "Network disconnected: sharded execution requires communication between units."; bottleneck = "network"; }
     }
-    const activeWeightsGB = weightsGB * input.activeFraction;
     const tokens = input.phase === "decode" ? 1 : input.contextTokens;
     const operationsGFLOP = 2 * input.modelParamsBillion * input.activeFraction * input.batch * tokens;
     // Evict weights first; KV/workspace remain local. Charge actual active spilled weight bytes.
-    const streamedGB = Math.min(weightsGB / n, spillGB) * input.activeFraction;
+    const streamedGB = input.offload && architecture.busGBs !== null && !architecture.sharedMemory ?
+      Math.min(weightsGB / n, spillGB) * activeWeightsGB / weightsGB : 0;
     const memoryMs = profile.bandwidthGBs === null ? 0 : (activeWeightsGB + kvGB) / n / (profile.bandwidthGBs * input.efficiency) * 1000;
     const hostMs = streamedGB / (102.4 * input.efficiency) * 1000;
     const busMs = architecture.busGBs === null ? 0 : streamedGB / (architecture.busGBs * input.efficiency) * 1000;
@@ -152,7 +167,7 @@ export function calculateArchitecture(
     const stepMs = blockedReason ? null : local.ms + networkMs;
     const rate = stepMs === null ? null : tokens * 1000 / stepMs;
     return {
-      profileId: profile.id, architecture, capacityGB, weightsGB, kvGB, workingSetGB, minimumUnits,
+      profileId: profile.id, architecture, capacityGB, weightsGB, kvGB, cacheLabel, activeWeightsGB, workingSetGB, minimumUnits,
       units: n, capacityFraction: capacityGB === null ? null : workingSetGB / (n * capacityGB),
       spillGB, stages, stepMs, tokensPerSecond: rate,
       aggregateTokensPerSecond: rate === null ? null : rate * input.batch,

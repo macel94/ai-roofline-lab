@@ -9,6 +9,17 @@
 .cluster-grid label, .chip-override-controls label { display: grid; min-width: 0; gap: 8px; color: var(--text); font-size: 1rem; }
 .exact-size-label { margin-top: 12px; font-size: var(--type-note) !important; }
 .check-control { display: flex; min-height: 44px; align-items: center; gap: 12px; margin-top: 20px; font-size: 1rem; }
+.model-picker { margin-top: 24px; max-width: 80ch; }
+.model-picker > label { display: block; margin-bottom: 8px; }
+.model-picker select { width: 100%; }
+.planning-shortlist { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.planning-shortlist h4 { margin: 0; font-size: 1.25rem; }
+.planning-path { border-top: 1px solid var(--line); }
+.planning-path summary { color: var(--accent); }
+.planning-path summary strong { margin-right: 24px; }
+.planning-path summary span { display: inline-block; color: var(--muted); font-size: var(--type-note); }
+.planning-path p { max-width: 80ch; font-size: var(--type-note); color: var(--muted); }
+.planning-path button { margin-bottom: 16px; }
 .cluster-help { max-width: 75ch; margin: 12px 0 16px; color: var(--muted); font-size: var(--type-note); }
 .shape-controls summary { color: var(--accent); }
 .scenario-error { margin-top: 16px; color: var(--danger); font-size: 1rem; font-weight: 600; }

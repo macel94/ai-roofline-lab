@@ -1,3 +1,5 @@
+import { getModelPreset } from "../data/models";
+
 export type WorkloadPhase = "decode" | "prefill";
 export type Bottleneck = "memory" | "compute" | "balanced" | "unknown";
 export type FitStatus = "fits" | "does-not-fit" | "unknown";
@@ -8,10 +10,13 @@ export interface CalculationProfile {
   readonly bandwidthGBs: number | null;
   readonly capacityGB: number | null;
   readonly capacityMode: CapacityMode;
+  readonly maxCapacityGB?: number;
 }
 
 export interface ScenarioInput {
   readonly phase: WorkloadPhase;
+  readonly modelPresetId?: string;
+  readonly storageFormat?: "native" | "uniform";
   readonly modelParamsBillion: number;
   readonly weightBits: 4 | 8 | 16;
   readonly batch: number;
@@ -48,6 +53,10 @@ export function validateScenario(input: ScenarioInput): string | null {
     return "Model size must be between 1 and 2,000 billion parameters (2T).";
   }
 
+  if (input.modelPresetId !== undefined && !getModelPreset(input.modelPresetId)) return "Unknown model preset.";
+  if (input.storageFormat !== undefined && !["native", "uniform"].includes(input.storageFormat)) return "Invalid storage format.";
+  if (input.storageFormat === "native" && !getModelPreset(input.modelPresetId)) return "Native storage requires a sourced model preset.";
+
   if (![4, 8, 16].includes(input.weightBits)) {
     return "This educational model does not support that weight precision.";
   }
@@ -59,9 +68,9 @@ export function validateScenario(input: ScenarioInput): string | null {
   if (
     !Number.isInteger(input.contextTokens) ||
     input.contextTokens < 128 ||
-    input.contextTokens > 8192
+    input.contextTokens > 1048576
   ) {
-    return "Prompt length must be between 128 and 8,192 tokens.";
+    return "Prompt length must be between 128 and 1,048,576 tokens.";
   }
 
   if (
@@ -92,7 +101,7 @@ export function calculateScenario(
     throw new RangeError(validationError);
   }
 
-  const weightFootprintGB = (input.modelParamsBillion * input.weightBits) / 8;
+  const weightFootprintGB = weightStorageGB(input);
   const estimatedWorkingSetGB = weightFootprintGB * MEMORY_RESERVE_FACTOR;
   const availableCapacityGB = resolveCapacity(profile, input.hostRamGB);
   const fit: FitStatus =
@@ -145,13 +154,17 @@ export function calculateScenario(
   };
 }
 
+export function weightStorageGB(input: ScenarioInput): number {
+  return input.storageFormat === "native" ? getModelPreset(input.modelPresetId)!.nativeWeightsGB : input.modelParamsBillion * input.weightBits / 8;
+}
+
 function resolveCapacity(profile: CalculationProfile, hostRamGB: number): number | null {
   if (profile.capacityMode === "unknown") {
     return null;
   }
 
   if (profile.capacityMode === "host") {
-    return hostRamGB;
+    return Math.min(hostRamGB, profile.maxCapacityGB ?? Infinity);
   }
 
   return profile.capacityGB;

@@ -3,6 +3,8 @@ import {
   type ScenarioResult,
   type WorkloadPhase,
 } from "./domain/model";
+import { MODEL_PRESETS, getModelPreset } from "./data/models";
+import { renderPlanning } from "./visuals/planning";
 import { HARDWARE_PROFILES, type ArchitectureProfile } from "./data/profiles";
 import { calculateArchitecture, estimateShape, validateCluster, type ChipOverride } from "./domain/architecture";
 import { renderSiliconMap, type SiliconMapTargets } from "./visuals/silicon-map";
@@ -10,6 +12,9 @@ import { formatNumber, renderRoofline } from "./visuals/roofline";
 
 interface AppState {
   phase: WorkloadPhase;
+  modelPresetId?: string;
+  storageFormat: "native" | "uniform";
+  kvWidth?: number;
   modelParamsBillion: number;
   weightBits: 4 | 8 | 16;
   batch: number;
@@ -37,7 +42,7 @@ function getElement<T extends HTMLElement>(id: string): T {
 }
 
 const state: AppState = {
-  phase: "decode",
+  phase: "decode", storageFormat: "uniform",
   modelParamsBillion: 7,
   weightBits: 4,
   batch: 1,
@@ -63,6 +68,9 @@ siliconWorkbench.before(scenarioForm);
 const weightBitsInput = getElement<HTMLSelectElement>("weight-bits");
 const batchInput = getElement<HTMLInputElement>("batch-size");
 const contextInput = getElement<HTMLInputElement>("context-size");
+const contextExact = getElement<HTMLInputElement>("context-exact");
+const modelPresetInput = getElement<HTMLSelectElement>("model-preset");
+for (const model of MODEL_PRESETS) modelPresetInput.add(new Option(model.name, model.id));
 const computeInput = getElement<HTMLInputElement>("compute-ceiling");
 const hostRamInput = getElement<HTMLInputElement>("host-ram");
 const chartContainer = getElement<HTMLDivElement>("roofline-chart");
@@ -118,11 +126,34 @@ scenarioForm.addEventListener("change", updateFromControls);
 scenarioForm.addEventListener("click", (event) => {
   const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-model-size]") : null;
   if (!button) return;
+  clearModelPreset();
   modelSizeInput.value = button.dataset.modelSize ?? "7";
   exactModelInput.value = modelSizeInput.value;
   updateFromControls();
 });
 phaseControl.addEventListener("change", updateFromControls);
+modelPresetInput.addEventListener("change", () => {
+  const model = getModelPreset(modelPresetInput.value);
+  if (!model) { clearModelPreset(); updateFromControls(); return; }
+  state.modelPresetId = model.id;
+  state.storageFormat = "native";
+  exactModelInput.value = String(model.paramsBillion);
+  modelSizeInput.value = String(model.paramsBillion);
+  weightBitsInput.value = "native";
+  getElement<HTMLSelectElement>("shape-mode").value = "manual";
+  getElement<HTMLInputElement>("model-layers").value = String(model.layers);
+  getElement<HTMLInputElement>("hidden-width").value = String(model.hiddenWidth);
+  getElement<HTMLInputElement>("kv-width").value = String(model.kvWidth);
+  updateFromControls();
+});
+getElement<HTMLElement>("planning-results").addEventListener("click", event => {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("button[data-plan-units]") : null;
+  if (!button) return;
+  getElement<HTMLSelectElement>("units-mode").value = "manual";
+  getElement<HTMLInputElement>("unit-count").value = button.dataset.planUnits!;
+  updateFromControls();
+  siliconLanes.querySelector<HTMLElement>(`[data-profile-id="${CSS.escape(button.dataset.planChip!)}"]`)?.scrollIntoView({ behavior: "instant", block: "start" });
+});
 siliconLanes.addEventListener("click", toggleProfile);
 getElement<HTMLButtonElement>("select-all-profiles").addEventListener("click", selectAllProfiles);
 getElement<HTMLButtonElement>("clear-profiles").addEventListener("click", clearProfiles);
@@ -135,14 +166,17 @@ window.addEventListener("pagehide", () => mapObserver?.disconnect(), { once: tru
 
 function readInputs(): void {
   const selectedPhase = document.querySelector<HTMLInputElement>('input[name="phase"]:checked');
-  const rawBits = Number(weightBitsInput.value);
+  const model = getModelPreset(state.modelPresetId);
+  const native = weightBitsInput.value === "native" && model !== undefined;
+  const rawBits = native ? model.weightBits : Number(weightBitsInput.value);
   if (!selectedPhase || ![4, 8, 16].includes(rawBits)) return;
+  state.storageFormat = native ? "native" : "uniform";
 
   state.phase = selectedPhase.value as WorkloadPhase;
   state.modelParamsBillion = Number(exactModelInput.value);
   state.weightBits = rawBits as 4 | 8 | 16;
   state.batch = Number(batchInput.value);
-  state.contextTokens = Number(contextInput.value);
+  state.contextTokens = Number(contextExact.value);
   state.computeCeilingTFLOPS = Number(computeInput.value);
   state.hostRamGB = Number(hostRamInput.value);
   state.unitsMode = getElement<HTMLSelectElement>("units-mode").value as "auto" | "manual";
@@ -155,23 +189,45 @@ function readInputs(): void {
   state.efficiency = Number(getElement<HTMLInputElement>("efficiency").value) / 100;
   state.targetTokensPerSecond = Number(getElement<HTMLInputElement>("target-rate").value);
   state.kvRatio = Number(getElement<HTMLSelectElement>("kv-ratio").value);
-  state.activeFraction = Number(getElement<HTMLInputElement>("active-fraction").value) / 100;
+  const activeInput = getElement<HTMLInputElement>("active-fraction");
+  if (model) activeInput.value = String(model.activeBillion[state.phase] / model.paramsBillion * 100);
+  state.activeFraction = Number(activeInput.value) / 100;
   const autoShape = getElement<HTMLSelectElement>("shape-mode").value === "auto";
   const layers = getElement<HTMLInputElement>("model-layers");
   const hidden = getElement<HTMLInputElement>("hidden-width");
-  if (autoShape && state.modelParamsBillion >= 1 && state.modelParamsBillion <= 2000) {
+  if (!model && autoShape && state.modelParamsBillion >= 1 && state.modelParamsBillion <= 2000) {
     const shape = estimateShape(state.modelParamsBillion);
     layers.value = String(shape.layers);
     hidden.value = String(shape.hiddenWidth);
   }
-  layers.disabled = autoShape;
-  hidden.disabled = autoShape;
+  layers.disabled = !model && autoShape;
+  hidden.disabled = !model && autoShape;
+  const kvWidth = getElement<HTMLInputElement>("kv-width");
+  getElement<HTMLSelectElement>("kv-ratio").disabled = !!model;
+  if (!model && autoShape) kvWidth.value = String(Math.round(Number(hidden.value) * state.kvRatio));
+  kvWidth.disabled = !model && autoShape;
+  state.kvWidth = model || !autoShape ? Number(kvWidth.value) : undefined;
   state.layers = Number(layers.value);
   state.hiddenWidth = Number(hidden.value);
   getElement<HTMLInputElement>("unit-count").disabled = state.unitsMode === "auto";
 }
 
+function clearModelPreset(): void {
+  const model = getModelPreset(state.modelPresetId);
+  if (weightBitsInput.value === "native") weightBitsInput.value = String(model?.weightBits ?? 4);
+  delete state.modelPresetId;
+  state.storageFormat = "uniform";
+  modelPresetInput.value = "custom";
+}
+
 function updateFromControls(event?: Event): void {
+  const target = event?.target;
+  if (target === modelPresetInput) return; // its own listener applies the entire preset atomically
+  if (target instanceof HTMLElement && ["model-size", "model-size-exact", "shape-mode", "model-layers", "hidden-width", "kv-width", "kv-ratio", "active-fraction"].includes(target.id)) clearModelPreset();
+  if (target === contextInput) contextExact.value = contextInput.value;
+  if (target === contextExact && contextExact.validity.valid) contextInput.value = contextExact.value;
+  if (target instanceof HTMLElement && target.id === "kv-ratio")
+    getElement<HTMLInputElement>("kv-width").value = String(Math.round(Number(getElement<HTMLInputElement>("hidden-width").value) * Number(getElement<HTMLSelectElement>("kv-ratio").value)));
   if (event?.target === modelSizeInput) exactModelInput.value = modelSizeInput.value;
   if (event?.target === exactModelInput && exactModelInput.validity.valid && exactModelInput.value !== "") modelSizeInput.value = exactModelInput.value;
   readInputs();
@@ -228,6 +284,8 @@ function clearProfiles(): void {
 function resetScenario(): void {
   scenarioForm.reset();
   chipOverrides.clear();
+  delete state.modelPresetId;
+  state.storageFormat = "uniform";
   const decodeRadio = phaseControl.querySelector<HTMLInputElement>('input[name="phase"][value="decode"]');
   if (decodeRadio) decodeRadio.checked = true;
 
@@ -262,7 +320,8 @@ function render(): void {
   const firstProfileId = HARDWARE_PROFILES[0]?.id ?? "";
   const arithmeticIntensity = allResults.get(firstProfileId)?.intensityFLOPPerByte ?? 0;
 
-  renderControls(state.offload || selectedProfiles.some((profile) => profile.capacityMode === "host"));
+  renderControls(state.offload || selectedProfiles.some((profile) => profile.capacityMode === "host"), architectureResults.get(firstProfileId)!);
+  renderPlanning(state, selectedProfiles, architectureResults, chipOverrides);
   renderComparison(selectedProfiles, results);
   renderSiliconMap(
     siliconMapTargets,
@@ -313,7 +372,7 @@ function render(): void {
     : "No chip paths included. Use Select all in the shared map to restore the comparison.";
 }
 
-function renderControls(hasHostProfile: boolean): void {
+function renderControls(hasHostProfile: boolean, architecture: ReturnType<typeof calculateArchitecture>): void {
   const modelOutput = getElement<HTMLOutputElement>("model-size-value");
   const workingSetOutput = getElement<HTMLOutputElement>("working-set-value");
   const batchOutput = getElement<HTMLOutputElement>("batch-size-value");
@@ -323,24 +382,35 @@ function renderControls(hasHostProfile: boolean): void {
   const contextControl = getElement<HTMLDivElement>("context-control");
   const contextHelp = getElement<HTMLParagraphElement>("context-help");
 
-  const weightFootprintGB = (state.modelParamsBillion * state.weightBits) / 8;
-  const kvGB = 2 * state.layers * state.hiddenWidth * state.kvRatio * 2 * state.contextTokens * state.batch / 1e9;
-  const estimatedWorkingSetGB = weightFootprintGB * 1.2 + kvGB;
-  modelOutput.value = state.modelParamsBillion >= 1000 ? `${formatNumber(state.modelParamsBillion / 1000, 3)} T` : `${formatNumber(state.modelParamsBillion, 0)} B`;
+  const estimatedWorkingSetGB = architecture.workingSetGB;
+  const model = getModelPreset(state.modelPresetId);
+  const nativeOption = weightBitsInput.querySelector<HTMLOptionElement>('option[value="native"]')!;
+  nativeOption.disabled = !model;
+  nativeOption.textContent = model ? `As released · ${model.nativeFormat}` : "As released · select a named model";
+  modelPresetInput.value = model?.id ?? "custom";
+  const summary = getElement<HTMLElement>("model-preset-summary");
+  summary.textContent = model ? `${model.layers} layers · hidden ${formatNumber(model.hiddenWidth, 0)} · ${formatNumber(model.activeBillion[state.phase], 2)}B active (${state.phase}). ${architecture.cacheLabel}. Released storage ${formatNumber(model.nativeWeightsGB, 2)} GB.${state.contextTokens > model.maxContextTokens ? ` Context exceeds config limit ${formatNumber(model.maxContextTokens, 0)}; extension/runtime support is required.` : ""}${state.storageFormat === "uniform" ? " Uniform precision is a theoretical repack, not the released checkpoint." : ""}` : "Custom model: size and shape are assumptions. Choose a named model to fill sourced checkpoint storage, shape and cache layout; your target and cluster settings stay unchanged.";
+  getElement<HTMLElement>("model-evidence").hidden = !model;
+  getElement<HTMLElement>("model-preset-details").textContent = model ? `${model.notes} Global cache/state is ideally sharded. Shared/sparse cache reads, runtime preallocation, quantization kernels and actual collectives are not emulated. Native mixed-format traffic uses min(checkpoint bytes, active parameters × 2 BF16 bytes), not average bits across all tensors.` : "";
+  const source = getElement<HTMLAnchorElement>("model-source");
+  source.hidden = !model;
+  if (model) source.href = `https://huggingface.co/${model.repository}/tree/${model.revision}`;
+  modelOutput.value = state.modelParamsBillion >= 1000 ? `${formatNumber(state.modelParamsBillion / 1000, 3)} T` : `${formatNumber(state.modelParamsBillion, Number.isInteger(state.modelParamsBillion) ? 0 : 3)} B`;
   workingSetOutput.value = `${formatNumber(estimatedWorkingSetGB, 1)} GB`;
   batchOutput.value = formatNumber(state.batch, 0);
   contextOutput.value = formatNumber(state.contextTokens, 0);
   computeOutput.value = `${formatNumber(state.computeCeilingTFLOPS, 0)} TFLOP/s`;
   hostRamOutput.value = `${formatNumber(state.hostRamGB, 0)} GB`;
   for (const preset of scenarioForm.querySelectorAll<HTMLButtonElement>("button[data-model-size]")) {
-    preset.setAttribute("aria-pressed", String(Number(preset.dataset.modelSize) === state.modelParamsBillion));
+    preset.setAttribute("aria-pressed", String(!model && Number(preset.dataset.modelSize) === state.modelParamsBillion));
   }
 
   contextInput.disabled = false;
   contextControl.classList.remove("is-disabled");
   contextHelp.textContent = state.phase === "decode"
-    ? "Context increases KV capacity and decode memory traffic. One generated token per step."
-    : "Prompt tokens increase matrix reuse and KV storage in the architecture model.";
+    ? "Context increases the selected cache/state and decode traffic. One generated token per step."
+    : "Prompt tokens increase matrix reuse and cache storage in the architecture model.";
+  contextHelp.textContent += " Slider: up to 8,192; exact context: up to 1,048,576. Respect your model/runtime context limit.";
   hostRamInput.disabled = !hasHostProfile;
 }
 

@@ -26,14 +26,14 @@ export function renderSiliconMap(
   animateChanges = false,
 ): void {
   const reference = results.get(profiles[0]?.id ?? "");
-  const active = input.activeFraction;
-  targets.weightVolume.textContent = `${f(reference?.weightFootprintGB ?? 0, 2)} GB`;
-  targets.matrixWork.textContent = `${f((reference?.operationsGFLOP ?? 0) * active, 2)} GFLOP`;
-  targets.intensity.textContent = `${f(reference?.intensityFLOPPerByte ?? 0, 1)} FLOP/byte`;
+  const architectureReference = architectureResults.get(profiles[0]?.id ?? "");
+  targets.weightVolume.textContent = `${f(architectureReference?.weightsGB ?? 0, 2)} GB`;
+  targets.matrixWork.textContent = `${f((reference?.operationsGFLOP ?? 0) * input.activeFraction, 2)} GFLOP`;
+  targets.intensity.textContent = `${f((reference?.operationsGFLOP ?? 0) * input.activeFraction / (architectureReference?.activeWeightsGB ?? 1), 1)} FLOP/byte`;
   targets.referenceRate.textContent = `${f(input.computeCeilingTFLOPS, 0)} TFLOP/s`;
   targets.phaseNote.textContent = input.phase === "decode"
     ? "DECODE: one generated token per sequence. Context adds KV traffic; batch reuses weights."
-    : `PREFILL: reuses the same weights across ${f(input.contextTokens, 0)} prompt tokens. Math grows; capacity includes BF16 KV.`;
+    : `PREFILL: reuses the same weights across ${f(input.contextTokens, 0)} prompt tokens. Math grows; capacity includes the selected cache layout.`;
 
   const selected = profiles.filter(p => includedProfileIds.has(p.id)).map(p => architectureResults.get(p.id)!);
   const counts = new Map<string, number>();
@@ -132,8 +132,9 @@ function createLane(profile: ArchitectureProfile, result: ArchitectureResult, in
   const capacityText = result.capacityGB === null ? "Usable capacity unknown" :
     `${f(result.workingSetGB / result.units, 2)} / ${f(result.capacityGB, 1)} GB per unit (${f((result.capacityFraction ?? 0) * 100, 1)}%)`;
   capacity.append(el("strong", "lane-fit", capacityText), occupancy,
-    el("small", "", `${f(result.weightsGB, 2)} GB weights + 20% reserve + ${f(result.kvGB, 2)} GB BF16 KV across the system`));
-  physical.append(viewport, el("p", "schematic-scroll-hint", "Scroll to follow the full path →"), capacity);
+    el("small", "", `${f(result.weightsGB, 2)} GB weights + 20% reserve + ${f(result.kvGB, 2)} GB cache/state across the system`));
+  physical.append(viewport, el("p", "schematic-scroll-hint", "Scroll to follow the full path →"), capacity,
+    el("p", "lane-physics-note", result.cacheLabel));
 
   const detail = el("div", "lane-detail");
   const verdict = el("div", "lane-verdict");

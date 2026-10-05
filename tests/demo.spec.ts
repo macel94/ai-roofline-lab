@@ -41,8 +41,8 @@ test.describe("Physical architecture simulation and calculator", () => {
     await expect(lane(page, "blackwell-b200").locator(".physical-component.unmodeled")).toContainText("unmodeled");
     await expect(lane(page, "blackwell-b200").locator(".memory-cell.occupied").first()).toHaveCSS("fill", "rgb(174, 215, 101)");
     await expect(lane(page, "blackwell-b200").locator('[data-resource="host"] .memory-cell.occupied')).toHaveCount(0);
-    await expect(lane(page, "groq-lpu").locator(".minimum-units")).toHaveText("Unknown");
-    await expect(lane(page, "groq-lpu").locator(".simulation-speed")).toHaveText("Blocked / unknown");
+    await expect(lane(page, "groq-lpu").locator(".minimum-units")).toHaveText("20 units");
+    await expect(lane(page, "groq-lpu")).toHaveAttribute("data-bottleneck", "network");
     await page.context().setOffline(true);
     await page.getByRole("button", { name: "2T", exact: true }).click();
     await expect(page.locator("#map-weight-volume")).toHaveText("1,000 GB");
@@ -130,13 +130,13 @@ test.describe("Physical architecture simulation and calculator", () => {
     await page.locator("#model-layers").fill("80");
     await page.locator("#hidden-width").fill("8192");
     await page.locator("#kv-ratio").selectOption("1");
-    await expect(gpu.locator(".capacity-readout small")).toContainText("21.47 GB BF16 KV");
+    await expect(gpu.locator(".capacity-readout small")).toContainText("21.47 GB cache/state");
   });
-  test("unknown capacity can be an explicit user assumption and resetting clears it", async ({ page }) => {
+  test("published Groq capacity can be overridden and resetting restores its scoped default", async ({ page }) => {
     await load(page);
     const groq = lane(page, "groq-lpu");
     await groq.locator("summary").click();
-    await expect(groq.locator(".chip-capacity")).toHaveAttribute("placeholder", /Unknown/);
+    await expect(groq.locator(".chip-capacity")).toHaveAttribute("placeholder", "0.22");
     await groq.locator(".chip-capacity").fill("10");
     await groq.locator(".chip-rate").fill("20");
     await groq.getByRole("button", { name: "Apply chip assumptions" }).click();
@@ -145,7 +145,7 @@ test.describe("Physical architecture simulation and calculator", () => {
     await expect(groq.locator("details")).toHaveAttribute("open", "");
     await expect(groq.locator("details")).toContainText("User-supplied");
     await page.getByRole("button", { name: "Reset scenario" }).click();
-    await expect(groq.locator(".minimum-units")).toHaveText("Unknown");
+    await expect(groq.locator(".minimum-units")).toHaveText("20 units");
     await expect(groq.locator(".chip-capacity")).toHaveValue("");
     await expect(page.locator("#units-mode")).toHaveValue("auto");
     await expect(page.locator("#network-bandwidth")).toHaveValue("400");
