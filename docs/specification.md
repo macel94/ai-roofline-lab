@@ -49,4 +49,4 @@ No measured latency/energy/cost, deployment runtime validation, NPU operator gua
 - [x] Distinct physical architecture schematics and resource-driven hotspots/motion.
 - [x] 2T workload range, network, KV/MoE, offload, per-chip overrides and unit/target calculator.
 - [x] Strict build and all numerical/browser tests pass repeatedly; screenshots reviewed.
-- [ ] Changes committed/pushed to the owning repository; Pages workflow and live behavior verified.
+- [x] Changes committed/pushed to the owning repository; Pages workflow and live behavior verified.

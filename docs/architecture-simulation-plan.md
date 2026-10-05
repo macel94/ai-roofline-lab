@@ -10,7 +10,7 @@ Replace the generic memory-to-compute illustration with physical CPU, GPU, TPU, 
 - [x] Implement distinct animated physical schematics and resource heat overlays.
 - [x] Add model presets/exact size, network, unit count, offload, KV/MoE, and target-rate controls.
 - [x] Verify production build, numerical edge cases, browser behavior, reduced motion, mobile overflow, and screenshots.
-- [ ] Update documentation, commit, push, and verify publication.
+- [x] Update documentation, commit, push, and verify publication.
 
 ## Design
 Keep the published memory profiles and optional normalized Roofline. Add a separate architecture resource model. Dedicated NPU lane uses the M4 Max package's shared memory; its effective matrix rate is an explicit illustrative assumption, NOT the vendor's Neural Engine TOPS claim. CPU/Apple/Groq effective rates are similarly labeled assumptions where comparable dense BF16 peaks are unavailable. B200 uses an explicitly illustrative BF16 ceiling; TPU uses the vendor BF16 peak. Both are discounted by an editable utilization factor. Q4 storage never automatically implies Q4 arithmetic.
@@ -48,4 +48,14 @@ Primary references and retrieved excerpts will be recorded in `docs/research.md`
 - Additional Chromium maximum-workload probe: 2T BF16, batch 32, 8,192-token prefill; no page errors, no validation errors, nine physical maps, 5,414.8 GB estimated working set.
 - Reference browser synchronous scenario updates measured roughly 24–36 ms (five-sample probe, including one no-op); this is a local UI observation, not a hardware performance benchmark.
 - Screenshot review caught and fixed inherited SVG fills masking memory/systolic cells; regression tests now assert occupied-memory fill and separate host-spill occupancy. Unmodeled cache/buffer timing is gray, not a falsely asserted cache hotspot.
-- Publication verification follows the source commit; it is not inferred from local tests.
+
+## Publication verification record
+
+- Source commit: `a63b5c38c8b15d0b1792b6093de73edb9a458ece` (`feat: visualize physical bottlenecks and size models up to 2T`), pushed to `origin/main`.
+- [GitHub Actions run 37249186012](https://github.com/macel94/ai-roofline-lab/actions/runs/37249186012): **success**, including production build/tests and Pages deployment for the exact source SHA.
+- Live URL: **https://macel94.github.io/ai-roofline-lab/**, HTTP **200**.
+- Live JS `index-CEqTotJo.js` and CSS `index-BTyM0AKh.css`: HTTP 200, correct MIME types, SHA-256 bytes match the locally tested production assets.
+- Live Chromium smoke: nine physical schematics; default 2T Q4 B200 memory floor and 20 tokens/s target both show seven modeled units; memory-cell fill is visible and cache timing is explicitly unmodeled.
+- Live scenario transitions: manual capacity block → explicit offload PCIe wall; 16 units / high hop latency → network wall; disconnected network → no throughput claim.
+- Live 360px layout: document width 360px; reduced motion remains functional. No page errors, HTTP errors, or unexpected external runtime requests.
+- A documentation-only follow-up records this completed verification; it does not change the validated application assets.
